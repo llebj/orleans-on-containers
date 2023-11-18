@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrainInterfaces", "GrainInt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Grains", "Grains\Grains.csproj", "{451522D0-4A84-47A3-B0C4-6086D53D649C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Silo", "Silo\Silo.csproj", "{37EEC6EB-BDA2-4DDE-BB8A-F2AE39726C15}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{451522D0-4A84-47A3-B0C4-6086D53D649C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{451522D0-4A84-47A3-B0C4-6086D53D649C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{451522D0-4A84-47A3-B0C4-6086D53D649C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37EEC6EB-BDA2-4DDE-BB8A-F2AE39726C15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37EEC6EB-BDA2-4DDE-BB8A-F2AE39726C15}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37EEC6EB-BDA2-4DDE-BB8A-F2AE39726C15}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37EEC6EB-BDA2-4DDE-BB8A-F2AE39726C15}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
