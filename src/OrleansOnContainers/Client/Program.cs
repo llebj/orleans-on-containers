@@ -1,12 +1,16 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Client;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-
-Console.WriteLine("Hello, World!");
 
 var builder = Host.CreateDefaultBuilder(args)
     .UseOrleansClient(client =>
     {
         client.UseLocalhostClustering();
+    })
+    .ConfigureServices(serviceCollection =>
+    {
+        serviceCollection.AddHostedService<ChatHostedService>();
     })
     .ConfigureLogging(logging => logging.AddConsole())
     .UseConsoleLifetime();

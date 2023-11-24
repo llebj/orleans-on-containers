@@ -1,6 +1,4 @@
-﻿using Orleans;
-
-namespace GrainInterfaces;
+﻿namespace GrainInterfaces;
 
 public interface IChatGrain : IGrainWithIntegerKey
 {
@@ -8,5 +6,5 @@ public interface IChatGrain : IGrainWithIntegerKey
 
     Task Leave(Guid clientId);
 
-    Task Message(string message);
+    Task Message(Guid clientId, string message);
 }

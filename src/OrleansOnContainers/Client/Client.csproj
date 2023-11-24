@@ -13,4 +13,9 @@
     <PackageReference Include="Microsoft.Orleans.Client" Version="7.2.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\GrainInterfaces\GrainInterfaces.csproj" />
+    <ProjectReference Include="..\Grains\Grains.csproj" />
+  </ItemGroup>
+
 </Project>

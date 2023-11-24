@@ -1,6 +1,5 @@
 ﻿using GrainInterfaces;
 using Microsoft.Extensions.Logging;
-using Orleans;
 
 namespace Grains;
 
@@ -28,9 +27,9 @@ public class ChatGrain : Grain, IChatGrain
         return Task.CompletedTask;
     }
 
-    public Task Message(string message)
+    public Task Message(Guid clientId, string message)
     {
-        _logger.LogInformation("Client {ClientId} says {Message}", message);
+        _logger.LogInformation("Client {ClientId} says {Message}", clientId, message);
 
         return Task.CompletedTask;
     }
