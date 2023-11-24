@@ -15,21 +15,21 @@ public class ChatGrain : Grain, IChatGrain
 
     public Task Join(Guid clientId)
     {
-        _logger.LogInformation("Client {ClientId} joined chat {GrainId}", clientId, IdentityString);
+        _logger.LogInformation("{ClientId} is online", clientId);
 
         return Task.CompletedTask;
     }
 
     public Task Leave(Guid clientId)
     {
-        _logger.LogInformation("Client {ClientId} left chat {GrainId}", clientId, IdentityString);
+        _logger.LogInformation("{ClientId} is offline", clientId);
 
         return Task.CompletedTask;
     }
 
     public Task Message(Guid clientId, string message)
     {
-        _logger.LogInformation("Client {ClientId} says {Message}", clientId, message);
+        _logger.LogDebug("{ClientId} says {Message}", clientId, message);
 
         return Task.CompletedTask;
     }

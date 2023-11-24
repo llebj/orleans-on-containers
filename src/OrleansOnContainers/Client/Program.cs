@@ -1,7 +1,13 @@
 ﻿using Client;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
+var configuration = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json")
+    .AddEnvironmentVariables()
+    .Build();
 
 var builder = Host.CreateDefaultBuilder(args)
     .UseOrleansClient(client =>
@@ -12,7 +18,11 @@ var builder = Host.CreateDefaultBuilder(args)
     {
         serviceCollection.AddHostedService<ChatHostedService>();
     })
-    .ConfigureLogging(logging => logging.AddConsole())
+    .ConfigureLogging(logging =>
+    {
+        logging.AddConfiguration(configuration);
+        logging.AddConsole();
+    })
     .UseConsoleLifetime();
 
 using IHost host = builder.Build();

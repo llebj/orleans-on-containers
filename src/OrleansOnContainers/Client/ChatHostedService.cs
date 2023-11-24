@@ -41,7 +41,7 @@ public class ChatHostedService : BackgroundService
         _logger.LogInformation("Starting {WorkerName} {ClientId}", nameof(ChatHostedService), _clientId);
         var chatGrain = _clusterClient.GetGrain<IChatGrain>(0);
 
-        _logger.LogDebug("Join chat {GrainId}", _grainId);
+        _logger.LogDebug("Joining chat {GrainId}", _grainId);
         await chatGrain.Join(_clientId);
         _logger.LogDebug("Joined chat {GrainId}", _grainId);
 
