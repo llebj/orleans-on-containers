@@ -5,8 +5,9 @@ WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0.404-1-alpine3.18-amd64 AS build
 WORKDIR /src
-COPY . .
+COPY "Silo.csproj" .
 RUN dotnet restore "Silo.csproj"
+COPY . .
 RUN dotnet build "Silo.csproj" -c Release -o /app/build
 
 FROM build AS publish
