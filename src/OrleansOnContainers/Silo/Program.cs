@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Shared.Extensions;
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
@@ -10,7 +11,7 @@ var configuration = new ConfigurationBuilder()
 var builder = Host.CreateDefaultBuilder(args)
     .UseOrleans(silo =>
     {
-        silo.UseLocalhostClustering();
+        silo.ConfigureDevelopmentClustering(configuration);
     })
     .ConfigureLogging(logging =>
     {
