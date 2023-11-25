@@ -5,9 +5,12 @@ WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:7.0.404-1-alpine3.18-amd64 AS build
 WORKDIR /src
-COPY "Silo.csproj" .
-RUN dotnet restore "Silo.csproj"
+COPY ["Silo/Silo.csproj", "Silo/"]
+COPY ["GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
+COPY ["Grains/Grains.csproj", "Grains/"]
+RUN dotnet restore "Silo/Silo.csproj"
 COPY . .
+WORKDIR "/src/Silo"
 RUN dotnet build "Silo.csproj" -c Release -o /app/build
 
 FROM build AS publish
