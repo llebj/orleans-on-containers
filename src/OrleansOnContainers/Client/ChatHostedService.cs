@@ -4,13 +4,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Client;
 
-public class ChatHostedService : BackgroundService
+public class ChatHostedService : BackgroundService, IChat
 {
     private readonly IClusterClient _clusterClient;
     private readonly ILogger<ChatHostedService> _logger;
+    private readonly Guid _clientId = Guid.NewGuid();
+    private readonly int _chatId = 0;
 
-    private Guid _clientId = Guid.NewGuid();
-    private int _grainId = 0;
+    private IChat? _reference;
 
     public ChatHostedService(
         IClusterClient clusterClient,
@@ -22,41 +23,36 @@ public class ChatHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Executing {WorkerName} {ClientId}", nameof(ChatHostedService), _clientId);
+        _logger.LogInformation("Executing hosted service.");
+        var chatGrain = _clusterClient.GetGrain<IChatGrain>(_chatId);
+        _logger.LogDebug("Subscribing to {Chat}.", _chatId);
+        await chatGrain.Subscribe(_reference!);
         var random = new Random();
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var chatGrain = _clusterClient.GetGrain<IChatGrain>(_grainId);
             var message = $"It is {DateTime.Now.TimeOfDay}";
-            _logger.LogDebug("Sending \"{Message}\" to {GrainId}", message, _grainId);
-            await chatGrain.Message(_clientId, message);
+            _logger.LogDebug("Sending message to {Chat}.", _chatId);
+            await chatGrain.SendMessage(_clientId, message);
 
             await Task.Delay(random.Next(5000, 60000), stoppingToken);
         }
+
+        _logger.LogDebug("Unsubscribing to {Chat}.", _chatId);
+        await chatGrain.Unsubscribe(_reference!);
     }
 
-    public override async Task StartAsync(CancellationToken cancellationToken)
+    public Task ReceiveMessage(Guid clientId, string message)
     {
-        _logger.LogInformation("Starting {WorkerName} {ClientId}", nameof(ChatHostedService), _clientId);
-        var chatGrain = _clusterClient.GetGrain<IChatGrain>(0);
+        _logger.LogDebug("{Client} says \"{Message}\".", clientId, message);
 
-        _logger.LogDebug("Joining chat {GrainId}", _grainId);
-        await chatGrain.Join(_clientId);
-        _logger.LogDebug("Joined chat {GrainId}", _grainId);
-
-        await base.StartAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
-    public override async Task StopAsync(CancellationToken cancellationToken)
+    public override Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Stopping {WorkerName} {Client}", nameof(ChatHostedService), _clientId);
-        var chatGrain = _clusterClient.GetGrain<IChatGrain>(0);
+        _reference = _clusterClient.CreateObjectReference<IChat>(this);
 
-        _logger.LogDebug("Leaving chat {GrainId}", _grainId);
-        await chatGrain.Leave(_clientId);
-        _logger.LogDebug("Left chat {GrainId}", _grainId);
-
-        await base.StopAsync(cancellationToken);
+        return base.StartAsync(cancellationToken);
     }
 }

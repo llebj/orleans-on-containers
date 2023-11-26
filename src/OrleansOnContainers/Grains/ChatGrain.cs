@@ -1,35 +1,39 @@
 ﻿using GrainInterfaces;
 using Microsoft.Extensions.Logging;
+using Orleans.Utilities;
 
 namespace Grains;
 
 public class ChatGrain : Grain, IChatGrain
 {
     private readonly ILogger<ChatGrain> _logger;
+    private readonly ObserverManager<IChat> _subscriptionManager;
 
     public ChatGrain(
         ILogger<ChatGrain> logger)
     {
         _logger = logger;
+        _subscriptionManager = new ObserverManager<IChat>(TimeSpan.FromMinutes(5), logger);
     }
 
-    public Task Join(Guid clientId)
+    public Task SendMessage(Guid clientId, string message)
     {
-        _logger.LogInformation("{ClientId} is online", clientId);
+        _logger.LogDebug("Sending message from {ClientId}.", clientId);
+        _subscriptionManager.Notify(o => o.ReceiveMessage(clientId, message));
 
         return Task.CompletedTask;
     }
 
-    public Task Leave(Guid clientId)
+    public Task Subscribe(IChat observer)
     {
-        _logger.LogInformation("{ClientId} is offline", clientId);
+        _subscriptionManager.Subscribe(observer, observer);
 
         return Task.CompletedTask;
     }
 
-    public Task Message(Guid clientId, string message)
+    public Task Unsubscribe(IChat observer)
     {
-        _logger.LogDebug("{ClientId} says {Message}", clientId, message);
+        _subscriptionManager.Unsubscribe(observer);
 
         return Task.CompletedTask;
     }

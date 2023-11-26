@@ -2,9 +2,9 @@
 
 public interface IChatGrain : IGrainWithIntegerKey
 {
-    Task Join(Guid clientId);
+    Task SendMessage(Guid clientId, string message);
 
-    Task Leave(Guid clientId);
+    Task Subscribe(IChat observer);
 
-    Task Message(Guid clientId, string message);
+    Task Unsubscribe(IChat observer);
 }
