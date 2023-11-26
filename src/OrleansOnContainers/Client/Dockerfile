@@ -8,6 +8,7 @@ WORKDIR /src
 COPY ["Client/Client.csproj", "Client/"]
 COPY ["GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
 COPY ["Grains/Grains.csproj", "Grains/"]
+COPY ["Shared/Shared.csproj", "Shared/"]
 RUN dotnet restore "Client/Client.csproj"
 COPY . .
 WORKDIR "/src/Client"

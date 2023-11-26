@@ -1,4 +1,5 @@
 ﻿using Client;
+using Client.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -12,7 +13,7 @@ var configuration = new ConfigurationBuilder()
 var builder = Host.CreateDefaultBuilder(args)
     .UseOrleansClient(client =>
     {
-        client.UseLocalhostClustering();
+        client.ConfigureStaticClustering(configuration);
     })
     .ConfigureServices(serviceCollection =>
     {
