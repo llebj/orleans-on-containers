@@ -1,9 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
-using Orleans.Hosting;
+using Shared.Helpers;
 using Shared.Options;
-using System.Net;
 
-namespace Shared.Extensions;
+namespace Silo.Extensions;
 
 public static class ISiloBuilderExtensions
 {
@@ -13,16 +12,9 @@ public static class ISiloBuilderExtensions
         configuration
             .GetSection("PrimarySilo")
             .Bind(primarySiloSettings);
-        var ipEndpoint = GetIpEndpoint(primarySiloSettings!.HostName, primarySiloSettings.Port);
+        var ipEndpoint = NetworkHelpers.GetIpEndpoint(primarySiloSettings!.HostName, primarySiloSettings.Port);
         builder.UseDevelopmentClustering(ipEndpoint);
 
         return builder;
-    }
-
-    private static IPEndPoint GetIpEndpoint(string hostname, int port)
-    {
-        var host = Dns.GetHostEntry(hostname);
-
-        return new IPEndPoint(host.AddressList[0], port);
-    }
+    }    
 }

@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Shared.Extensions;
+using Silo.Extensions;
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")

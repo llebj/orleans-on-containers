@@ -1,6 +1,6 @@
 ﻿namespace Shared.Options;
 
-internal record PrimarySiloOptions
+public record PrimarySiloOptions
 {
     public string HostName { get; set; } = "localhost";
 
