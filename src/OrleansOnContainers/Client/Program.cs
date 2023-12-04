@@ -4,11 +4,17 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Serilog;
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
     .AddEnvironmentVariables()
     .Build();
+
+var logger = new LoggerConfiguration()
+    .ReadFrom
+    .Configuration(configuration)
+    .CreateLogger();
 
 var builder = Host.CreateDefaultBuilder(args)
     .UseOrleansClient(client =>
@@ -21,8 +27,8 @@ var builder = Host.CreateDefaultBuilder(args)
     })
     .ConfigureLogging(logging =>
     {
-        logging.AddConfiguration(configuration);
-        logging.AddConsole();
+        logging.ClearProviders();
+        logging.AddSerilog(logger);
     })
     .UseConsoleLifetime();
 
