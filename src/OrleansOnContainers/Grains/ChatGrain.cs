@@ -7,13 +7,13 @@ namespace Grains;
 public class ChatGrain : Grain, IChatGrain
 {
     private readonly ILogger<ChatGrain> _logger;
-    private readonly ObserverManager<IChat> _subscriptionManager;
+    private readonly ObserverManager<IChatObserver> _subscriptionManager;
 
     public ChatGrain(
         ILogger<ChatGrain> logger)
     {
         _logger = logger;
-        _subscriptionManager = new ObserverManager<IChat>(TimeSpan.FromMinutes(5), logger);
+        _subscriptionManager = new ObserverManager<IChatObserver>(TimeSpan.FromMinutes(5), logger);
     }
 
     public Task SendMessage(Guid clientId, string message)
@@ -24,14 +24,14 @@ public class ChatGrain : Grain, IChatGrain
         return Task.CompletedTask;
     }
 
-    public Task Subscribe(IChat observer)
+    public Task Subscribe(IChatObserver observer)
     {
         _subscriptionManager.Subscribe(observer, observer);
 
         return Task.CompletedTask;
     }
 
-    public Task Unsubscribe(IChat observer)
+    public Task Unsubscribe(IChatObserver observer)
     {
         _subscriptionManager.Unsubscribe(observer);
 

@@ -2,7 +2,7 @@
 
 namespace GrainInterfaces;
 
-public interface IChat : IGrainObserver
+public interface IChatObserver : IGrainObserver
 {
     [OneWay]
     Task ReceiveMessage(Guid clientId, string message);

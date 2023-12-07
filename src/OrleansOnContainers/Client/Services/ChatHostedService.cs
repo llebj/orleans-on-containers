@@ -2,16 +2,16 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Client;
+namespace Client.Services;
 
-public class ChatHostedService : BackgroundService, IChat
+public class ChatHostedService : BackgroundService, IChatObserver
 {
     private readonly IClusterClient _clusterClient;
     private readonly ILogger<ChatHostedService> _logger;
     private readonly Guid _clientId = Guid.NewGuid();
     private readonly int _chatId = 0;
 
-    private IChat? _reference;
+    private IChatObserver? _reference;
 
     public ChatHostedService(
         IClusterClient clusterClient,
@@ -51,7 +51,7 @@ public class ChatHostedService : BackgroundService, IChat
 
     public override Task StartAsync(CancellationToken cancellationToken)
     {
-        _reference = _clusterClient.CreateObjectReference<IChat>(this);
+        _reference = _clusterClient.CreateObjectReference<IChatObserver>(this);
 
         return base.StartAsync(cancellationToken);
     }
