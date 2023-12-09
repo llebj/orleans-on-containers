@@ -1,4 +1,5 @@
 ﻿using Client.Extensions;
+using Client.Options;
 using Client.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,7 @@ var builder = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices(serviceCollection =>
     {
+        serviceCollection.Configure<ClientOptions>(_ => new ClientOptions());
         serviceCollection.AddHostedService<ChatHostedService>();
     })
     .ConfigureLogging(logging =>

@@ -1,7 +1,18 @@
-﻿namespace Client.Services;
+﻿using Client.Options;
+using Microsoft.Extensions.Options;
+
+namespace Client.Services;
 
 public class ChatService : IChatService
 {
+    private readonly ClientOptions _options;
+
+    public ChatService(
+        IOptions<ClientOptions> options)
+    {
+        _options = options.Value;
+    }
+
     public event EventHandler<MessageReceivedEventArgs>? MessageReceived;
 
     public Task ReceiveMessage(Guid clientId, string message)
