@@ -1,6 +1,16 @@
 ﻿namespace Client.Options;
 
-public record ClientOptions
+public class ClientOptions
 {
-    public Guid ClientId { get; } = Guid.NewGuid();
+    public ClientOptions()
+    {
+        
+    }
+
+    public ClientOptions(Guid clientId)
+    {
+        ClientId = clientId;
+    }
+
+    public Guid ClientId { get; set; }
 }

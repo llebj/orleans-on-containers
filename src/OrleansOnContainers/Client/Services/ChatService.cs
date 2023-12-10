@@ -1,16 +1,21 @@
 ﻿using Client.Options;
+using GrainInterfaces;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Client.Services;
 
 public class ChatService : IChatService
 {
-    private readonly ClientOptions _options;
+    private readonly IClusterClient _clusterClient;
+    private readonly ILogger<ChatService> _logger;
 
     public ChatService(
-        IOptions<ClientOptions> options)
+        IClusterClient clusterClient,
+        ILogger<ChatService> logger)
     {
-        _options = options.Value;
+        _clusterClient = clusterClient;
+        _logger = logger;
     }
 
     public event EventHandler<MessageReceivedEventArgs>? MessageReceived;
@@ -20,9 +25,14 @@ public class ChatService : IChatService
         throw new NotImplementedException();
     }
 
-    public Task SendMessage(Guid clientId, string message)
+    public async Task SendMessage(Guid clientId, string message)
     {
-        throw new NotImplementedException();
+        var chatId = 0;
+
+        _logger.LogDebug("Sending message to chat {Chat}", chatId);
+        var grain = _clusterClient.GetGrain<IChatGrain>(chatId);
+        await grain.SendMessage(clientId, message);
+        _logger.LogDebug("Sent message to chat {Chat}", chatId);
     }
 }
 
