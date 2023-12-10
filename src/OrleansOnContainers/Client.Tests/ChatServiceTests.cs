@@ -8,12 +8,12 @@ using Xunit;
 
 namespace Client.Tests;
 
-public class ChatServiceTests : IClassFixture<ClientFixture>
+public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
 {
-    private readonly ClientFixture _fixture;
+    private readonly ChatServiceTestsFixture _fixture;
 
     public ChatServiceTests(
-        ClientFixture fixture)
+        ChatServiceTestsFixture fixture)
     {
         _fixture = fixture;
     }
@@ -60,9 +60,9 @@ public class ChatServiceTests : IClassFixture<ClientFixture>
     }
 }
 
-public class ClientFixture
+public class ChatServiceTestsFixture
 {
-    public ClientFixture()
+    public ChatServiceTestsFixture()
     {
         ClientOptions = MockOptions();
     }
