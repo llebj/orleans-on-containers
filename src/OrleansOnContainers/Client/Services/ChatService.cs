@@ -1,7 +1,5 @@
-﻿using Client.Options;
-using GrainInterfaces;
+﻿using GrainInterfaces;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Client.Services;
 
@@ -22,7 +20,11 @@ public class ChatService : IChatService
 
     public Task ReceiveMessage(Guid clientId, string message)
     {
-        throw new NotImplementedException();
+        _logger.LogDebug("Received message from {Client}", clientId);
+        var eventArgs = new MessageReceivedEventArgs(clientId, message);
+        MessageReceived?.Invoke(this, eventArgs);
+
+        return Task.CompletedTask;
     }
 
     public async Task SendMessage(Guid clientId, string message)

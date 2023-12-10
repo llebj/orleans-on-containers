@@ -36,6 +36,28 @@ public class ChatServiceTests : IClassFixture<ClientFixture>
         // Assert
         await grain.Received().SendMessage(_fixture.ClientId, message);
     }
+
+    [Fact]
+    public async Task WhenTheServiceReceivesAMessage_InvokeTheMessageReceivedEventHandler()
+    {
+        // Arrange
+        var service = new ChatService(Substitute.For<IClusterClient>(), new NullLogger<ChatService>());
+        var handler = Substitute.For<EventHandler<MessageReceivedEventArgs>>();
+        service.MessageReceived += handler;
+        var message = "test";
+
+        // Act
+        await service.ReceiveMessage(_fixture.ClientId, message);
+
+        // Assert
+        handler
+            .Received()
+            .Invoke(
+                service, 
+                Arg.Is<MessageReceivedEventArgs>(x => 
+                    x.Clientid == _fixture.ClientId && 
+                    x.Message == message));
+    }
 }
 
 public class ClientFixture
