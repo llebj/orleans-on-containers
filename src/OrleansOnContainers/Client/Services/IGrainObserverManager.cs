@@ -4,7 +4,7 @@ namespace Client.Services;
 
 internal interface IGrainObserverManager
 {
-    void Subscribe(IChatObserver observer, int grainId);
+    Task Subscribe(IChatObserver observer, int grainId);
 
-    void Unsubscribe(IChatObserver observer, int grainId);
+    Task Unsubscribe(IChatObserver observer, int grainId);
 }

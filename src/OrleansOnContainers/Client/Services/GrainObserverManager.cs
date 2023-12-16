@@ -1,19 +1,33 @@
 ﻿using GrainInterfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Client.Services;
-internal class GrainObserverManager : IGrainObserverManager
+
+public class GrainObserverManager : IGrainObserverManager
 {
-    public void Subscribe(IChatObserver observer, int grainId)
+    private readonly IClusterClient _clusterClient;
+    private bool _isSubscribed = false;
+
+    public GrainObserverManager(
+        IClusterClient clusterClient)
     {
-        throw new NotImplementedException();
+        _clusterClient = clusterClient;
     }
 
-    public void Unsubscribe(IChatObserver observer, int grainId)
+    public async Task Subscribe(IChatObserver observer, int grainId)
+    {
+        if (_isSubscribed)
+        {
+            var message = "A subscription is already being managed. Unsubscribe first before registering a new subscription";
+
+            throw new InvalidOperationException(message);
+        }
+
+        var grain = _clusterClient.GetGrain<IChatGrain>(grainId);
+        await grain.Subscribe(observer);
+        _isSubscribed = true;
+    }
+
+    public Task Unsubscribe(IChatObserver observer, int grainId)
     {
         throw new NotImplementedException();
     }
