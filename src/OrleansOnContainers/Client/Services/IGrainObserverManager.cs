@@ -2,7 +2,7 @@
 
 namespace Client.Services;
 
-internal interface IGrainObserverManager
+public interface IGrainObserverManager
 {
     Task Subscribe(IChatObserver observer, string grainId);
 

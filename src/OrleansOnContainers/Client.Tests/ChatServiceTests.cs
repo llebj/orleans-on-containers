@@ -19,15 +19,33 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
     }
 
     [Fact]
-    public async Task WhenAClientSendsAMessage_ForwardTheMessageToTheChatGrain()
+    public async Task GivenAnActiveSubscription_WhenAClientSendsAMessage_RetrieveTheCorrectChatGrain()
     {
         // Arrange
+        var chat = "chat";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var service = new ChatService(clusterClient, Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
+        await service.Join(chat, _fixture.ClientId);
+
+        // Act
+        await service.SendMessage(_fixture.ClientId, "message");
+
+        // Assert
+        clusterClient.Received().GetGrain<IChatGrain>(chat);
+    }
+
+    [Fact]
+    public async Task GivenAnActiveSubscription_WhenAClientSendsAMessage_ForwardTheMessageToTheChatGrain()
+    {
+        // Arrange
+        var chat = "chat";
         var clusterClient = Substitute.For<IClusterClient>();
         var grain = Substitute.For<IChatGrain>();
         clusterClient
-            .GetGrain<IChatGrain>(Arg.Any<string>())
-            .ReturnsForAnyArgs(grain);
-        var service = new ChatService(clusterClient, new NullLogger<ChatService>());
+            .GetGrain<IChatGrain>(chat)
+            .Returns(grain);
+        var service = new ChatService(clusterClient, Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
+        await service.Join(chat, _fixture.ClientId);
         var message = "test";
 
         // Act
@@ -41,7 +59,7 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
     public async Task WhenTheServiceReceivesAMessage_InvokeTheMessageReceivedEventHandler()
     {
         // Arrange
-        var service = new ChatService(Substitute.For<IClusterClient>(), new NullLogger<ChatService>());
+        var service = new ChatService(Substitute.For<IClusterClient>(), Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
         var handler = Substitute.For<EventHandler<MessageReceivedEventArgs>>();
         service.MessageReceived += handler;
         var message = "test";
@@ -63,11 +81,16 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
     public async Task WhenAClientRequestsToJoinAChat_SubscribeToChatMessages()
     {
         // Arrange
+        var chat = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var observerManager = Substitute.For<IGrainObserverManager>();
+        var service = new ChatService(clusterClient, observerManager, new NullLogger<ChatService>());
 
         // Act
+        await service.Join(chat, Guid.NewGuid());
 
         // Assert
-        throw new NotImplementedException();
+        await observerManager.Received().Subscribe(service, chat);
     }
 }
 
