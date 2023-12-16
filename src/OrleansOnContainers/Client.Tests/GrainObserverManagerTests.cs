@@ -1,12 +1,6 @@
 ﻿using Client.Services;
 using GrainInterfaces;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Client.Tests;
@@ -20,13 +14,13 @@ public class GrainObserverManagerTests
         var clusterClient = Substitute.For<IClusterClient>();
         var grain = Substitute.For<IChatGrain>();
         clusterClient
-            .GetGrain<IChatGrain>(Arg.Any<long>())
+            .GetGrain<IChatGrain>(Arg.Any<string>())
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var manager = new GrainObserverManager(clusterClient);
 
         // Act
-        await manager.Subscribe(observer, 0);
+        await manager.Subscribe(observer, "test");
 
         // Assert
         await grain.Received().Subscribe(observer);
@@ -39,14 +33,14 @@ public class GrainObserverManagerTests
         var clusterClient = Substitute.For<IClusterClient>();
         var grain = Substitute.For<IChatGrain>();
         clusterClient
-            .GetGrain<IChatGrain>(Arg.Any<long>())
+            .GetGrain<IChatGrain>(Arg.Any<string>())
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var manager = new GrainObserverManager(clusterClient);
-        await manager.Subscribe(observer, 0);
+        await manager.Subscribe(observer, "test");
 
         // Act
         // Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.Subscribe(observer, 1));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.Subscribe(observer, "test-2"));
     }
 }

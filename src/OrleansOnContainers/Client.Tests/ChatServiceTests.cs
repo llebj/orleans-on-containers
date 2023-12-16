@@ -25,7 +25,7 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
         var clusterClient = Substitute.For<IClusterClient>();
         var grain = Substitute.For<IChatGrain>();
         clusterClient
-            .GetGrain<IChatGrain>(Arg.Any<long>())
+            .GetGrain<IChatGrain>(Arg.Any<string>())
             .ReturnsForAnyArgs(grain);
         var service = new ChatService(clusterClient, new NullLogger<ChatService>());
         var message = "test";

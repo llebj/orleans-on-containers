@@ -34,7 +34,7 @@ public class ChatService : IChatService
 
     public async Task SendMessage(Guid clientId, string message)
     {
-        var chatId = 0;
+        var chatId = "test";
 
         _logger.LogDebug("Sending message to chat {Chat}", chatId);
         var grain = _clusterClient.GetGrain<IChatGrain>(chatId);

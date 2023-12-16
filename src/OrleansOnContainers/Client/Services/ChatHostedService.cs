@@ -9,7 +9,7 @@ public class ChatHostedService : BackgroundService, IChatObserver
     private readonly IClusterClient _clusterClient;
     private readonly ILogger<ChatHostedService> _logger;
     private readonly Guid _clientId = Guid.NewGuid();
-    private readonly int _chatId = 0;
+    private readonly string _chatId = "test";
 
     private IChatObserver? _reference;
 

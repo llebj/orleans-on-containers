@@ -1,6 +1,6 @@
 ﻿namespace GrainInterfaces;
 
-public interface IChatGrain : IGrainWithIntegerKey
+public interface IChatGrain : IGrainWithStringKey
 {
     Task SendMessage(Guid clientId, string message);
 

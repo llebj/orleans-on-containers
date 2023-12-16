@@ -13,7 +13,7 @@ public class GrainObserverManager : IGrainObserverManager
         _clusterClient = clusterClient;
     }
 
-    public async Task Subscribe(IChatObserver observer, int grainId)
+    public async Task Subscribe(IChatObserver observer, string grainId)
     {
         if (_isSubscribed)
         {
@@ -27,7 +27,7 @@ public class GrainObserverManager : IGrainObserverManager
         _isSubscribed = true;
     }
 
-    public Task Unsubscribe(IChatObserver observer, int grainId)
+    public Task Unsubscribe(IChatObserver observer, string grainId)
     {
         throw new NotImplementedException();
     }
