@@ -18,6 +18,11 @@ public class ChatService : IChatService
 
     public event EventHandler<MessageReceivedEventArgs>? MessageReceived;
 
+    public Task Join(string chat, Guid clientId)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task ReceiveMessage(Guid clientId, string message)
     {
         _logger.LogDebug("Received message from {Client}", clientId);

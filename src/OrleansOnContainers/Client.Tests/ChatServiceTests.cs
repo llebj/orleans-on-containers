@@ -58,6 +58,17 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
                     x.Clientid == _fixture.ClientId && 
                     x.Message == message));
     }
+
+    [Fact]
+    public async Task WhenAClientRequestsToJoinAChat_SubscribeToChatMessages()
+    {
+        // Arrange
+
+        // Act
+
+        // Assert
+        throw new NotImplementedException();
+    }
 }
 
 public class ChatServiceTestsFixture
