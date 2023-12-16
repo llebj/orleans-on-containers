@@ -19,7 +19,7 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
     }
 
     [Fact]
-    public async Task GivenAnActiveSubscription_WhenAClientSendsAMessage_RetrieveTheCorrectChatGrain()
+    public async Task GivenAnActiveSubscription_WhenAClientSendsAMessage_ThenRetrieveTheCorrectChatGrain()
     {
         // Arrange
         var chat = "chat";
@@ -35,7 +35,7 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
     }
 
     [Fact]
-    public async Task GivenAnActiveSubscription_WhenAClientSendsAMessage_ForwardTheMessageToTheChatGrain()
+    public async Task GivenAnActiveSubscription_WhenAClientSendsAMessage_ThenForwardTheMessageToTheChatGrain()
     {
         // Arrange
         var chat = "chat";
@@ -55,8 +55,75 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
         await grain.Received().SendMessage(_fixture.ClientId, message);
     }
 
+    [Fact] 
+    public async Task GivenAnActiveSubscription_WhenAClientSendsAMessageAndTheMessageIsSent_ThenReturnASuccessResult()
+    {
+        // Arrange
+        var chat = "chat";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        clusterClient
+            .GetGrain<IChatGrain>(chat)
+            .Returns(grain);
+        var service = new ChatService(clusterClient, Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
+        await service.Join(chat, _fixture.ClientId);
+        var message = "test";
+
+        // Act
+        var result = await service.SendMessage(_fixture.ClientId, message);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+    }
+
     [Fact]
-    public async Task WhenTheServiceReceivesAMessage_InvokeTheMessageReceivedEventHandler()
+    public async Task GivenNoActiveSubscription_WhenAClientSendsAMessage_ThenReturnAFailureResultWithAMessage()
+    {
+        // Arrange
+        var chat = "chat";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        clusterClient
+            .GetGrain<IChatGrain>(chat)
+            .Returns(grain);
+        var service = new ChatService(clusterClient, Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
+        var message = "test";
+
+        // Act
+        var result = await service.SendMessage(_fixture.ClientId, message);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.False(string.IsNullOrEmpty(message));
+    }
+
+    [Fact]
+    public async Task GivenAnActiveSubscription_WhenAClientSendsAMessageAndCallingTheGrainFails_ThenReturnAFailureResultWithAMessage()
+    {
+        // Arrange
+        var chat = "chat";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        grain
+            .SendMessage(_fixture.ClientId, Arg.Any<string>())
+            .Returns(x => { throw new Exception(); });
+        clusterClient
+            .GetGrain<IChatGrain>(chat)
+            .Returns(grain);
+        var service = new ChatService(clusterClient, Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
+        await service.Join(chat, _fixture.ClientId);
+        var message = "test";
+
+        // Act
+        var result = await service.SendMessage(_fixture.ClientId, message);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.False(string.IsNullOrEmpty(message));
+    }
+
+    [Fact]
+    public async Task WhenTheServiceReceivesAMessage_ThenInvokeTheMessageReceivedEventHandler()
     {
         // Arrange
         var service = new ChatService(Substitute.For<IClusterClient>(), Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
@@ -78,7 +145,7 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
     }
 
     [Fact]
-    public async Task WhenAClientRequestsToJoinAChat_SubscribeToChatMessages()
+    public async Task WhenAClientRequestsToJoinAChat_ThenSubscribeToChatMessages()
     {
         // Arrange
         var chat = "test";
@@ -94,7 +161,7 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
     }
 
     [Fact]
-    public async Task WhenAClientRequestsToJoinAChatAndTheRequestSucceeds_ThenReturnATrueSuccessResult()
+    public async Task WhenAClientRequestsToJoinAChatAndTheRequestSucceeds_ThenReturnASuccessResult()
     {
         // Arrange
         var chat = "test";
@@ -110,7 +177,7 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
     }
 
     [Fact]
-    public async Task WhenAClientRequestsToJoinAChatAndTheRequestFails_ThenReturnAFalseSuccessResultWithAMessage()
+    public async Task WhenAClientRequestsToJoinAChatAndTheRequestFails_ThenReturnAFailureResultWithAMessage()
     {
         // Arrange
         var chat = "test";

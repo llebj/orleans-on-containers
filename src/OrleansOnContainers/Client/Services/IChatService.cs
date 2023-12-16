@@ -6,5 +6,5 @@ internal interface IChatService : IChatObserver
 {
     Task<Result> Join(string chat, Guid clientId);
 
-    Task SendMessage(Guid clientId, string message);
+    Task<Result> SendMessage(Guid clientId, string message);
 }

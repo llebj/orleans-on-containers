@@ -8,7 +8,9 @@ public class ChatService : IChatService
     private readonly IClusterClient _clusterClient;
     private readonly IGrainObserverManager _grainObserverManager;
     private readonly ILogger<ChatService> _logger;
-    private string _currentChat;
+
+    private string? _currentChat;
+    private bool _hasValidSubscription => !string.IsNullOrEmpty(_currentChat);
 
     public ChatService(
         IClusterClient clusterClient,
@@ -52,12 +54,33 @@ public class ChatService : IChatService
         return Task.CompletedTask;
     }
 
-    public async Task SendMessage(Guid clientId, string message)
+    public async Task<Result> SendMessage(Guid clientId, string message)
     {
         _logger.LogDebug("Sending message to chat {Chat}", _currentChat);
+
+        if (!_hasValidSubscription)
+        {
+            _logger.LogDebug("Failed to send message: no active subscription.");
+
+            return Result.Failure("The message failed to send as there is no active subscription.");
+        }
+
         var grain = _clusterClient.GetGrain<IChatGrain>(_currentChat);
-        await grain.SendMessage(clientId, message);
+
+        try
+        {
+            await grain.SendMessage(clientId, message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send message.");
+
+            return Result.Failure("The message failed to send due to a network related error.");
+        }
+        
         _logger.LogDebug("Sent message to chat {Chat}", _currentChat);
+
+        return Result.Success();
     }
 }
 
