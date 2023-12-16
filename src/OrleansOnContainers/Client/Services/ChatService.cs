@@ -22,12 +22,25 @@ public class ChatService : IChatService
 
     public event EventHandler<MessageReceivedEventArgs>? MessageReceived;
 
-    public async Task Join(string chat, Guid clientId)
+    public async Task<Result> Join(string chat, Guid clientId)
     {
         _logger.LogDebug("Attempting to join {Chat}.", chat);
-        await _grainObserverManager.Subscribe(this, chat);
+
+        try
+        {
+            await _grainObserverManager.Subscribe(this, chat);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to join {Chat}.", chat);
+
+            return Result.Failure(ex.Message);
+        }
+
         _currentChat = chat;
         _logger.LogDebug("Successfully joined {Chat}.", chat);
+
+        return Result.Success();
     }
 
     public Task ReceiveMessage(Guid clientId, string message)
