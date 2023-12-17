@@ -25,6 +25,7 @@ var builder = Host.CreateDefaultBuilder(args)
     .ConfigureServices(serviceCollection =>
     {
         serviceCollection.Configure<ClientOptions>(options => options.ClientId = Guid.NewGuid());
+        serviceCollection.Configure<ObserverManagerOptions>(configuration.GetSection(ObserverManagerOptions.Key));
         serviceCollection.AddHostedService<ChatHostedService>();
     })
     .ConfigureLogging(logging =>
