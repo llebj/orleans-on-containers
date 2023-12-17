@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Grains.Options;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Silo.Extensions;
@@ -12,6 +14,10 @@ var builder = Host.CreateDefaultBuilder(args)
     .UseOrleans(silo =>
     {
         silo.ConfigureDevelopmentClustering(configuration);
+    })
+    .ConfigureServices(serviceCollection =>
+    {
+        serviceCollection.Configure<ChatGrainOptions>(configuration.GetSection(ChatGrainOptions.Key));
     })
     .ConfigureLogging(logging =>
     {

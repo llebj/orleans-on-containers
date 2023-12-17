@@ -1,5 +1,7 @@
 ﻿using GrainInterfaces;
+using Grains.Options;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Orleans.Utilities;
 
 namespace Grains;
@@ -10,10 +12,11 @@ public class ChatGrain : Grain, IChatGrain
     private readonly ObserverManager<IChatObserver> _subscriptionManager;
 
     public ChatGrain(
-        ILogger<ChatGrain> logger)
+        ILogger<ChatGrain> logger,
+        IOptions<ChatGrainOptions> options)
     {
         _logger = logger;
-        _subscriptionManager = new ObserverManager<IChatObserver>(TimeSpan.FromMinutes(5), logger);
+        _subscriptionManager = new ObserverManager<IChatObserver>(TimeSpan.FromSeconds(options.Value.ObserverTimeout), logger);
     }
 
     public Task SendMessage(Guid clientId, string message)
