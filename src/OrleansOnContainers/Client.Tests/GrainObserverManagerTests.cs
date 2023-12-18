@@ -169,9 +169,58 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .Subscribe(observerReference);
     }
 
-    // GivenAnUnsubscribedClient_WhenTheClientSubscribes_ThenRegisterTheNewSubscriptionWithTheGrain
+    [Fact]
+    public async Task GivenAnUnsubscribedClient_WhenTheClientSubscribes_ThenRegisterTheNewSubscriptionWithTheGrain()
+    {
+        // Arrange
+        var grainId = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        clusterClient
+            .GetGrain<IChatGrain>(grainId)
+            .Returns(grain);
+        var observer = Substitute.For<IChatObserver>();
+        var observerReference = Substitute.For<IChatObserver>();
+        var grainFactory = Substitute.For<IGrainFactory>();
+        grainFactory
+            .CreateObjectReference<IChatObserver>(observer)
+            .Returns(observerReference);
+        var manager = new GrainObserverManager(
+            clusterClient,
+            grainFactory,
+            _fixture.ObserverManagerOptions,
+            new FakeTimeProvider(DateTimeOffset.UtcNow));
+        await manager.Subscribe(observer, grainId);
+        await manager.Unsubscribe(observer, grainId);
 
-    // GivenNoActiveSubscription_WhenAClientUnsubscribes_ThenThrowAnInvalidOperationException
+        // Act
+        await manager.Subscribe(observer, grainId);
+
+        // Assert
+        await grain.Received().Subscribe(observerReference);
+    }
+
+    [Fact]
+    public async Task GivenNoActiveSubscription_WhenAClientUnsubscribes_ThenThrowAnInvalidOperationException()
+    {
+        // Arrange
+        var grainId = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        clusterClient
+            .GetGrain<IChatGrain>(grainId)
+            .Returns(grain);
+        var observer = Substitute.For<IChatObserver>();
+        var manager = new GrainObserverManager(
+            clusterClient,
+            Substitute.For<IGrainFactory>(),
+            _fixture.ObserverManagerOptions,
+            new FakeTimeProvider(DateTimeOffset.UtcNow));
+
+        // Act
+        // Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.Unsubscribe(observer, grainId));
+    }
 }
 
 public class GrainObserverManagerTestsFixture 

@@ -1,8 +1,6 @@
 ﻿using Client.Options;
 using GrainInterfaces;
 using Microsoft.Extensions.Options;
-using Orleans.Runtime;
-using System;
 
 namespace Client.Services;
 
@@ -57,12 +55,19 @@ public class GrainObserverManager : IGrainObserverManager
 
     public async Task Unsubscribe(IChatObserver observer, string grainId)
     {
+        if (!_isSubscribed)
+        {
+            throw new InvalidOperationException("No subscription currently exists.");
+        }
+
         var grain = _clusterClient.GetGrain<IChatGrain>(_grainId);
         await grain.Unsubscribe(_reference);
 
         _cancellationTokenSource.Cancel();
         _periodicTimer.Dispose();
         _cancellationTokenSource.Dispose();
+
+        _isSubscribed = false;
     }
 
     private async Task Resubscribe(CancellationToken cancellationToken)
