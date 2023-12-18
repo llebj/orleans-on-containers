@@ -2,6 +2,7 @@
 using Client.Services;
 using GrainInterfaces;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Xunit;
 
@@ -27,7 +28,11 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .GetGrain<IChatGrain>(grainId)
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
-        var manager = new GrainObserverManager(clusterClient, _fixture.ObserverManagerOptions);
+        var manager = new GrainObserverManager(
+            clusterClient,
+            Substitute.For<IGrainFactory>(),
+            _fixture.ObserverManagerOptions,
+            new FakeTimeProvider(DateTimeOffset.UtcNow));
 
         // Act
         await manager.Subscribe(observer, grainId);
@@ -46,7 +51,11 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .GetGrain<IChatGrain>(Arg.Any<string>())
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
-        var manager = new GrainObserverManager(clusterClient, _fixture.ObserverManagerOptions);
+        var manager = new GrainObserverManager(
+            clusterClient,
+            Substitute.For<IGrainFactory>(),
+            _fixture.ObserverManagerOptions,
+            new FakeTimeProvider(DateTimeOffset.UtcNow));
         await manager.Subscribe(observer, "test");
 
         // Act
@@ -65,10 +74,16 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .GetGrain<IChatGrain>(grainId)
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
-        var manager = new GrainObserverManager(clusterClient, _fixture.ObserverManagerOptions);
+        var timeProvider = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var manager = new GrainObserverManager(
+            clusterClient,
+            Substitute.For<IGrainFactory>(),
+            _fixture.ObserverManagerOptions, 
+            timeProvider);
         await manager.Subscribe(observer, grainId);
 
         // Act
+        timeProvider.Advance(TimeSpan.FromSeconds(_fixture.RefreshPeriod));
 
         // Assert
         clusterClient
@@ -76,7 +91,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .GetGrain<IChatGrain>(grainId);
         await grain
             .Received(2)
-            .Subscribe(observer);
+            .Subscribe(Arg.Any<IChatObserver>());
     }
 }
 
@@ -89,14 +104,14 @@ public class GrainObserverManagerTestsFixture
 
     public IOptions<ObserverManagerOptions> ObserverManagerOptions { get; }
 
-    public int RefreshPariod { get; } = 150;
+    public int RefreshPeriod { get; } = 150;
 
     private IOptions<ObserverManagerOptions> MockOptions()
     {
         var substitute = Substitute.For<IOptions<ObserverManagerOptions>>();
         var options = new ObserverManagerOptions
         {
-            RefreshPeriod = RefreshPariod
+            RefreshPeriod = RefreshPeriod
         };
         substitute.Value.Returns(options);
 
