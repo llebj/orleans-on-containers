@@ -58,12 +58,13 @@ public class GrainObserverManager : IGrainObserverManager
         _isSubscribed = true;
     }
 
-    public Task Unsubscribe(IChatObserver observer, string grainId)
+    public async Task Unsubscribe(IChatObserver observer, string grainId)
     {
         // When a client unsubscibes, the re-subscribe operation wants to be cancelled
         // using the cancellation token. Immediately afterwards, the existing timer wants
         // to be disposed of and set to null.
-        throw new NotImplementedException();
+        var grain = _clusterClient.GetGrain<IChatGrain>(_grainId);
+        await grain.Unsubscribe(_reference);
     }
 
     private async Task Resubscribe(CancellationToken cancellationToken)
