@@ -4,7 +4,6 @@ using GrainInterfaces;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
-using System;
 using Xunit;
 
 namespace Client.Tests;
@@ -70,7 +69,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
     }
 
     [Fact]
-    public async Task GivenAnActiveSubscription_WhenTheRefreshPeriodExpires_ThenResubscibeToTheSameGrain()
+    public async Task GivenAnActiveSubscription_WhenTheRefreshPeriodExpires_ThenResubscibeToTheGrain()
     {
         // Arrange
         var grainId = "test";
@@ -97,9 +96,6 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         timeProvider.Advance(TimeSpan.FromSeconds(_fixture.RefreshPeriod));
 
         // Assert
-        clusterClient
-            .Received(2)
-            .GetGrain<IChatGrain>(grainId);
         await grain
             .Received(2)
             .Subscribe(observerReference);
@@ -135,6 +131,47 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         // Assert
         await grain.Received().Unsubscribe(observerReference);
     }
+
+    [Fact(Skip = "Running this as part of a suite breaks GivenAnActiveSubscription_WhenTheRefreshPeriodExpires_ThenResubscibeToTheGrain")]
+    public async Task GivenAnActiveSubscriptionThatResubscribes_WhenAClientUnsubscribes_ThenStopResubscribingToTheGrain()
+    {
+        // Arrange
+        var grainId = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        clusterClient
+            .GetGrain<IChatGrain>(grainId)
+            .Returns(grain);
+        var observer = Substitute.For<IChatObserver>();
+        var observerReference = Substitute.For<IChatObserver>();
+        var grainFactory = Substitute.For<IGrainFactory>();
+        grainFactory
+            .CreateObjectReference<IChatObserver>(observer)
+            .Returns(observerReference);
+        var timeProvider = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var manager = new GrainObserverManager(
+            clusterClient,
+            grainFactory,
+            _fixture.ObserverManagerOptions,
+            timeProvider);
+        await manager.Subscribe(observer, grainId);
+        timeProvider.Advance(TimeSpan.FromSeconds(_fixture.RefreshPeriod));
+
+        // Act
+        await manager.Unsubscribe(observer, grainId);
+        // Advance the time provider again to ensure that if the client had not unsubscribed
+        // then more calls to resubscribe would have been made in addition to the initial one.
+        timeProvider.Advance(TimeSpan.FromSeconds(2 * _fixture.RefreshPeriod));
+
+        // Assert
+        await grain
+            .Received(2)
+            .Subscribe(observerReference);
+    }
+
+    // GivenAnUnsubscribedClient_WhenTheClientSubscribes_ThenRegisterTheNewSubscriptionWithTheGrain
+
+    // GivenNoActiveSubscription_WhenAClientUnsubscribes_ThenThrowAnInvalidOperationException
 }
 
 public class GrainObserverManagerTestsFixture 

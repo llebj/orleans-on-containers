@@ -44,9 +44,6 @@ public class GrainObserverManager : IGrainObserverManager
         _reference = _grainFactory.CreateObjectReference<IChatObserver>(observer);
         _grainId = grainId;
 
-        // A new PeriodicTimer wants to be instantiated and set to resubscribe
-        // on each timer tick. A cancellation token source wants to be created
-        // and passed into the timer, allowing the operation to be cancelled.
         await Subscribe();
 
         _cancellationTokenSource = new CancellationTokenSource();
@@ -60,20 +57,24 @@ public class GrainObserverManager : IGrainObserverManager
 
     public async Task Unsubscribe(IChatObserver observer, string grainId)
     {
-        // When a client unsubscibes, the re-subscribe operation wants to be cancelled
-        // using the cancellation token. Immediately afterwards, the existing timer wants
-        // to be disposed of and set to null.
         var grain = _clusterClient.GetGrain<IChatGrain>(_grainId);
         await grain.Unsubscribe(_reference);
+
+        _cancellationTokenSource.Cancel();
+        _periodicTimer.Dispose();
+        _cancellationTokenSource.Dispose();
     }
 
     private async Task Resubscribe(CancellationToken cancellationToken)
     {
-        while (!cancellationToken.IsCancellationRequested && 
-            await _periodicTimer.WaitForNextTickAsync(cancellationToken))
+        try
         {
-            await Subscribe();
+            while (await _periodicTimer.WaitForNextTickAsync(cancellationToken))
+            {
+                await Subscribe();
+            }
         }
+        catch (OperationCanceledException) { }
     }
 
     private async Task Subscribe()
