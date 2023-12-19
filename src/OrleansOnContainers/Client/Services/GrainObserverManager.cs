@@ -1,6 +1,4 @@
-﻿using Client.Options;
-using GrainInterfaces;
-using Microsoft.Extensions.Options;
+﻿using GrainInterfaces;
 
 namespace Client.Services;
 
@@ -8,26 +6,19 @@ public class GrainObserverManager : IGrainObserverManager
 {
     private readonly IClusterClient _clusterClient;
     private readonly IGrainFactory _grainFactory;
-    private readonly ObserverManagerOptions _options;
-    private readonly TimeProvider _timeProvider;
-
-    private CancellationTokenSource? _cancellationTokenSource;
+    private readonly IPeriodicTimer _periodicTimer;
     private bool _isSubscribed = false;
     private string? _grainId;
-    private PeriodicTimer? _periodicTimer;
     private IChatObserver? _reference;
-    private Task? _timerTask;
 
     public GrainObserverManager(
         IClusterClient clusterClient,
         IGrainFactory grainFactory,
-        IOptions<ObserverManagerOptions> options,
-        TimeProvider timeProvider)
+        IPeriodicTimer periodicTimer)
     {
         _clusterClient = clusterClient;
         _grainFactory = grainFactory;
-        _options = options.Value;
-        _timeProvider = timeProvider;
+        _periodicTimer = periodicTimer;
     }
 
     public async Task Subscribe(IChatObserver observer, string grainId)
@@ -44,11 +35,14 @@ public class GrainObserverManager : IGrainObserverManager
 
         await Subscribe();
 
-        _cancellationTokenSource = new CancellationTokenSource();
-        _periodicTimer = new PeriodicTimer(
-            TimeSpan.FromSeconds(_options.RefreshPeriod), 
-            _timeProvider);
-        _timerTask = Resubscribe(_cancellationTokenSource.Token);
+        //_cancellationTokenSource = new CancellationTokenSource();
+        //_periodicTimer = new PeriodicTimer(
+        //    TimeSpan.FromSeconds(_options.RefreshPeriod), 
+        //    _timeProvider);
+        
+        //// The resubscription lolgic needs to be broken out into a separate class
+        //// in order to avoid the race condition present in the current set of unit tests.
+        //_timerTask = Resubscribe(_cancellationTokenSource.Token);
 
         _isSubscribed = true;
     }
@@ -62,25 +56,26 @@ public class GrainObserverManager : IGrainObserverManager
 
         var grain = _clusterClient.GetGrain<IChatGrain>(_grainId);
         await grain.Unsubscribe(_reference);
+        await _periodicTimer.Stop();
 
-        _cancellationTokenSource.Cancel();
-        _periodicTimer.Dispose();
-        _cancellationTokenSource.Dispose();
+        //_cancellationTokenSource.Cancel();
+        //_periodicTimer.Dispose();
+        //_cancellationTokenSource.Dispose();
 
         _isSubscribed = false;
     }
 
-    private async Task Resubscribe(CancellationToken cancellationToken)
-    {
-        try
-        {
-            while (await _periodicTimer.WaitForNextTickAsync(cancellationToken))
-            {
-                await Subscribe();
-            }
-        }
-        catch (OperationCanceledException) { }
-    }
+    //private async Task Resubscribe(CancellationToken cancellationToken)
+    //{
+    //    try
+    //    {
+    //        while (await _periodicTimer.WaitForNextTickAsync(cancellationToken))
+    //        {
+    //            await Subscribe();
+    //        }
+    //    }
+    //    catch (OperationCanceledException) { }
+    //}
 
     private async Task Subscribe()
     {

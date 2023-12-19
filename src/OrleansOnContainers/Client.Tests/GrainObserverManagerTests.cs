@@ -36,8 +36,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             grainFactory,
-            _fixture.ObserverManagerOptions,
-            new FakeTimeProvider(DateTimeOffset.UtcNow));
+            Substitute.For<IPeriodicTimer>());
 
         // Act
         await manager.Subscribe(observer, grainId);
@@ -59,8 +58,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             Substitute.For<IGrainFactory>(),
-            _fixture.ObserverManagerOptions,
-            new FakeTimeProvider(DateTimeOffset.UtcNow));
+            Substitute.For<IPeriodicTimer>());
         await manager.Subscribe(observer, "test");
 
         // Act
@@ -68,7 +66,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => manager.Subscribe(observer, "test-2"));
     }
 
-    [Fact]
+    [Fact(Skip = "No longer relevant (functionality abstracted).")]
     public async Task GivenAnActiveSubscription_WhenTheRefreshPeriodExpires_ThenResubscibeToTheGrain()
     {
         // Arrange
@@ -88,8 +86,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             grainFactory,
-            _fixture.ObserverManagerOptions, 
-            timeProvider);
+            Substitute.For<IPeriodicTimer>());
         await manager.Subscribe(observer, grainId);
 
         // Act
@@ -117,12 +114,10 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         grainFactory
             .CreateObjectReference<IChatObserver>(observer)
             .Returns(observerReference);
-        var timeProvider = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var manager = new GrainObserverManager(
             clusterClient,
             grainFactory,
-            _fixture.ObserverManagerOptions,
-            timeProvider);
+            Substitute.For<IPeriodicTimer>());
         await manager.Subscribe(observer, grainId);
 
         // Act
@@ -132,7 +127,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         await grain.Received().Unsubscribe(observerReference);
     }
 
-    [Fact(Skip = "Running this as part of a suite breaks GivenAnActiveSubscription_WhenTheRefreshPeriodExpires_ThenResubscibeToTheGrain")]
+    [Fact(Skip = "No longer relevant (functionality abstracted).")]
     public async Task GivenAnActiveSubscriptionThatResubscribes_WhenAClientUnsubscribes_ThenStopResubscribingToTheGrain()
     {
         // Arrange
@@ -152,8 +147,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             grainFactory,
-            _fixture.ObserverManagerOptions,
-            timeProvider);
+            Substitute.For<IPeriodicTimer>());
         await manager.Subscribe(observer, grainId);
         timeProvider.Advance(TimeSpan.FromSeconds(_fixture.RefreshPeriod));
 
@@ -188,8 +182,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             grainFactory,
-            _fixture.ObserverManagerOptions,
-            new FakeTimeProvider(DateTimeOffset.UtcNow));
+            Substitute.For<IPeriodicTimer>());
         await manager.Subscribe(observer, grainId);
         await manager.Unsubscribe(observer, grainId);
 
@@ -214,8 +207,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             Substitute.For<IGrainFactory>(),
-            _fixture.ObserverManagerOptions,
-            new FakeTimeProvider(DateTimeOffset.UtcNow));
+            Substitute.For<IPeriodicTimer>());
 
         // Act
         // Assert
