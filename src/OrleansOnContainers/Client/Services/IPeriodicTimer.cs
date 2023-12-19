@@ -1,8 +1,8 @@
 ﻿namespace Client.Services;
 
-public interface IPeriodicTimer
+public interface IPeriodicTimer<T>
 {
-    Task Start();
+    Task Start(T state, Func<T, Task> timerDelegate);
 
     Task Stop();
 }
