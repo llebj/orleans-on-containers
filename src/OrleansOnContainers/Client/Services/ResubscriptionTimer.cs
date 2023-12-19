@@ -4,9 +4,9 @@ using Microsoft.Extensions.Options;
 
 namespace Client.Services;
 
-public class BackgroundTimer<T> : IPeriodicTimer<T>
+public class ResubscriptionTimer<T> : IResubscriber<T>
 {
-    private readonly ILogger<BackgroundTimer<T>> _logger;
+    private readonly ILogger<ResubscriptionTimer<T>> _logger;
     private readonly ObserverManagerOptions _options;
     private readonly TimeProvider _timerProvider;
 
@@ -15,8 +15,8 @@ public class BackgroundTimer<T> : IPeriodicTimer<T>
     private T? _state;
     private Func<T, Task>? _timerDelegate;
 
-    public BackgroundTimer(
-        ILogger<BackgroundTimer<T>> logger,
+    public ResubscriptionTimer(
+        ILogger<ResubscriptionTimer<T>> logger,
         IOptions<ObserverManagerOptions> options,
         TimeProvider timerProvider)
     {
@@ -31,15 +31,30 @@ public class BackgroundTimer<T> : IPeriodicTimer<T>
         _state != null ||
         _timerDelegate != null;
 
-    public Task Start(T state, Func<T, Task> timerDelegate)
+    public Task Clear()
     {
-        _logger.LogDebug("Starting background timer.");
+        _logger.LogDebug("Stopping resubscription timer.");
+        _cancellationTokenSource?.Cancel();
+        _cancellationTokenSource?.Dispose();
+        _timer?.Dispose();
+
+        _cancellationTokenSource = null;
+        _timer = null;
+        _state = default;
+        _timerDelegate = null;
+
+        return Task.CompletedTask;
+    }
+
+    public Task Register(T state, Func<T, Task> timerDelegate)
+    {
+        _logger.LogDebug("Starting resubscription timer.");
 
         if (IsStarted)
         {
-            _logger.LogDebug("Background timer is already running.");
-            Stop();
-            _logger.LogDebug("Restarting background timer.");
+            _logger.LogDebug("Resubscription timer is already running.");
+            Clear();
+            _logger.LogDebug("Restarting resubscription timer.");
         }
 
         _state = state;
@@ -50,21 +65,6 @@ public class BackgroundTimer<T> : IPeriodicTimer<T>
             _timerProvider);
 
         _ = Run(_cancellationTokenSource.Token);
-
-        return Task.CompletedTask;
-    }
-
-    public Task Stop()
-    {
-        _logger.LogDebug("Stopping background timer.");
-        _cancellationTokenSource?.Cancel();
-        _cancellationTokenSource?.Dispose();
-        _timer?.Dispose();
-
-        _cancellationTokenSource = null;
-        _timer = null;
-        _state = default;
-        _timerDelegate = null;
 
         return Task.CompletedTask;
     }

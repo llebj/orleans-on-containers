@@ -6,7 +6,7 @@ public class GrainObserverManager : IGrainObserverManager
 {
     private readonly IClusterClient _clusterClient;
     private readonly IGrainFactory _grainFactory;
-    private readonly IPeriodicTimer<GrainObserverManagerState> _periodicTimer;
+    private readonly IResubscriber<GrainObserverManagerState> _periodicTimer;
     private bool _isSubscribed = false;
     private string? _grainId;
     private IChatObserver? _reference;
@@ -14,7 +14,7 @@ public class GrainObserverManager : IGrainObserverManager
     public GrainObserverManager(
         IClusterClient clusterClient,
         IGrainFactory grainFactory,
-        IPeriodicTimer<GrainObserverManagerState> periodicTimer)
+        IResubscriber<GrainObserverManagerState> periodicTimer)
     {
         _clusterClient = clusterClient;
         _grainFactory = grainFactory;
@@ -56,7 +56,7 @@ public class GrainObserverManager : IGrainObserverManager
 
         var grain = _clusterClient.GetGrain<IChatGrain>(_grainId);
         await grain.Unsubscribe(_reference);
-        await _periodicTimer.Stop();
+        await _periodicTimer.Clear();
 
         //_cancellationTokenSource.Cancel();
         //_periodicTimer.Dispose();
