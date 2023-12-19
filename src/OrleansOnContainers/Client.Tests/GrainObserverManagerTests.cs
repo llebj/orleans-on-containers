@@ -46,6 +46,46 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
     }
 
     [Fact]
+    public async Task GivenNoActiveSubscription_WhenASubscriptionFails_ThenASecondSuccessfulSubscriptionCanBeMade()
+    {
+        // Arrange
+        var grainId = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        // Fail the first subscription call to the grain.
+        grain
+            .Subscribe(Arg.Any<IChatObserver>())
+            .Returns(
+                x => { throw new Exception(); },
+                x => Task.CompletedTask);
+        clusterClient
+            .GetGrain<IChatGrain>(grainId)
+            .Returns(grain);
+        var observer = Substitute.For<IChatObserver>();
+        var observerReference = Substitute.For<IChatObserver>();
+        var grainFactory = Substitute.For<IGrainFactory>();
+        grainFactory
+            .CreateObjectReference<IChatObserver>(observer)
+            .Returns(observerReference);
+        var manager = new GrainObserverManager(
+            clusterClient,
+            grainFactory,
+            Substitute.For<IResubscriber<GrainObserverManagerState>>());
+
+        // Act
+        // Catch and ignore the configured exception throw on the first call to subscribe.
+        try
+        {
+            await manager.Subscribe(observer, grainId);
+        }
+        catch { }
+
+        // Assert
+        // The second call to subscribe should complete without issue.
+        await manager.Subscribe(observer, grainId);
+    }
+
+    [Fact]
     public async Task GivenAnActiveSubscription_WhenAClientAttemptsToSubscribe_ThenThrowAnInvalidOperationException()
     {
         // Arrange

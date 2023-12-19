@@ -6,73 +6,80 @@ public class GrainObserverManager : IGrainObserverManager
 {
     private readonly IClusterClient _clusterClient;
     private readonly IGrainFactory _grainFactory;
-    private readonly IResubscriber<GrainObserverManagerState> _periodicTimer;
-    private bool _isSubscribed = false;
-    private string? _grainId;
-    private IChatObserver? _reference;
+    private readonly IResubscriber<GrainObserverManagerState> _resubscriber;
+    private GrainObserverManagerState _state = new();
 
     public GrainObserverManager(
         IClusterClient clusterClient,
         IGrainFactory grainFactory,
-        IResubscriber<GrainObserverManagerState> periodicTimer)
+        IResubscriber<GrainObserverManagerState> resubscriber)
     {
         _clusterClient = clusterClient;
         _grainFactory = grainFactory;
-        _periodicTimer = periodicTimer;
+        _resubscriber = resubscriber;
     }
 
     public async Task Subscribe(IChatObserver observer, string grainId)
     {
-        if (_isSubscribed)
+        if (_state.IsSubscribed)
         {
-            var message = "A subscription is already being managed. Unsubscribe first before registering a new subscription";
+            var message = "A subscription is already being managed. Unsubscribe first before registering a new subscription.";
 
+            // Return a Task<Result> from this method rather than throwing an exception.
             throw new InvalidOperationException(message);
         }
 
-        _reference = _grainFactory.CreateObjectReference<IChatObserver>(observer);
-        _grainId = grainId;
+        _state.Set(grainId, _grainFactory.CreateObjectReference<IChatObserver>(observer));
 
-        await Subscribe();
+        try
+        {
+            await Subscribe(_state);
+        }
+        catch
+        {
+            _state.Clear();
 
-        //_cancellationTokenSource = new CancellationTokenSource();
-        //_periodicTimer = new PeriodicTimer(
-        //    TimeSpan.FromSeconds(_options.RefreshPeriod), 
-        //    _timeProvider);
-        
-        //// The resubscription lolgic needs to be broken out into a separate class
-        //// in order to avoid the race condition present in the current set of unit tests.
-        //_timerTask = Resubscribe(_cancellationTokenSource.Token);
-
-        _isSubscribed = true;
+            throw;
+        }
     }
 
     public async Task Unsubscribe(IChatObserver observer, string grainId)
     {
-        if (!_isSubscribed)
+        if (!_state.IsSubscribed)
         {
+            // Return a Task<Result> from this method rather than throwing an exception.
             throw new InvalidOperationException("No subscription currently exists.");
         }
 
-        var grain = _clusterClient.GetGrain<IChatGrain>(_grainId);
-        await grain.Unsubscribe(_reference);
-        await _periodicTimer.Clear();
-
-        //_cancellationTokenSource.Cancel();
-        //_periodicTimer.Dispose();
-        //_cancellationTokenSource.Dispose();
-
-        _isSubscribed = false;
+        var grain = _clusterClient.GetGrain<IChatGrain>(_state.GrainId);
+        // _state.Reference cannot be null here if _state.IsSubscribed is true
+        await grain.Unsubscribe(_state.Reference!);
+        _state.Clear();
+        await _resubscriber.Clear();
     }
 
-    private async Task Subscribe()
+    private async Task Subscribe(GrainSubscription grainSubscription)
     {
-        var grain = _clusterClient.GetGrain<IChatGrain>(_grainId);
-        await grain.Subscribe(_reference);
+        var grain = _clusterClient.GetGrain<IChatGrain>(grainSubscription.GrainId);
+        await grain.Subscribe(grainSubscription.Reference!);
     }
 }
 
-public class GrainObserverManagerState
+public class GrainObserverManagerState : GrainSubscription
 {
+    public bool IsSubscribed =>
+        !string.IsNullOrEmpty(GrainId) &&
+        Reference != null;
 
+    public void Clear()
+    {
+        GrainId = null;
+        Reference = null;
+    }
+
+    public void Set(string grainId, IChatObserver reference)
+    {
+        GrainId = grainId;
+        Reference = reference;
+    }
 }
