@@ -6,13 +6,13 @@ public class GrainObserverManager : IGrainObserverManager
 {
     private readonly IClusterClient _clusterClient;
     private readonly IGrainFactory _grainFactory;
-    private readonly IResubscriber<GrainObserverManagerState> _resubscriber;
+    private readonly IResubscriber<GrainSubscription> _resubscriber;
     private GrainObserverManagerState _state = new();
 
     public GrainObserverManager(
         IClusterClient clusterClient,
         IGrainFactory grainFactory,
-        IResubscriber<GrainObserverManagerState> resubscriber)
+        IResubscriber<GrainSubscription> resubscriber)
     {
         _clusterClient = clusterClient;
         _grainFactory = grainFactory;
@@ -41,6 +41,8 @@ public class GrainObserverManager : IGrainObserverManager
 
             throw;
         }
+
+        await _resubscriber.Register(_state, Subscribe);
     }
 
     public async Task Unsubscribe(IChatObserver observer, string grainId)

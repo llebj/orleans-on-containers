@@ -36,13 +36,46 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             grainFactory,
-            Substitute.For<IResubscriber<GrainObserverManagerState>>());
+            Substitute.For<IResubscriber<GrainSubscription>>());
 
         // Act
         await manager.Subscribe(observer, grainId);
 
         // Assert
         await grain.Received().Subscribe(observerReference);
+    }
+
+    [Fact]
+    public async Task GivenNoActiveSubscription_WhenAClientSubscribes_ThenRegisterTheClientForResubscription()
+    {
+        // Arrange
+        var grainId = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        clusterClient
+            .GetGrain<IChatGrain>(grainId)
+            .Returns(grain);
+        var observer = Substitute.For<IChatObserver>();
+        var observerReference = Substitute.For<IChatObserver>();
+        var grainFactory = Substitute.For<IGrainFactory>();
+        grainFactory
+            .CreateObjectReference<IChatObserver>(observer)
+            .Returns(observerReference);
+        var resubscriber = Substitute.For<IResubscriber<GrainSubscription>>();
+        var manager = new GrainObserverManager(
+            clusterClient,
+            grainFactory,
+            resubscriber);
+
+        // Act
+        await manager.Subscribe(observer, grainId);
+
+        // Assert
+        await resubscriber
+            .Received()
+            .Register(
+                Arg.Is<GrainSubscription>(x => x.GrainId == grainId && x.Reference == observerReference), 
+                Arg.Any<Func<GrainSubscription, Task>>());
     }
 
     [Fact]
@@ -70,7 +103,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             grainFactory,
-            Substitute.For<IResubscriber<GrainObserverManagerState>>());
+            Substitute.For<IResubscriber<GrainSubscription>>());
 
         // Act
         // Catch and ignore the configured exception throw on the first call to subscribe.
@@ -98,7 +131,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             Substitute.For<IGrainFactory>(),
-            Substitute.For<IResubscriber<GrainObserverManagerState>>());
+            Substitute.For<IResubscriber<GrainSubscription>>());
         await manager.Subscribe(observer, "test");
 
         // Act
@@ -126,7 +159,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             grainFactory,
-            Substitute.For<IResubscriber<GrainObserverManagerState>>());
+            Substitute.For<IResubscriber<GrainSubscription>>());
         await manager.Subscribe(observer, grainId);
 
         // Act
@@ -157,7 +190,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             grainFactory,
-            Substitute.For<IResubscriber<GrainObserverManagerState>>());
+            Substitute.For<IResubscriber<GrainSubscription>>());
         await manager.Subscribe(observer, grainId);
 
         // Act
@@ -165,6 +198,36 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
 
         // Assert
         await grain.Received().Unsubscribe(observerReference);
+    }
+
+    [Fact]
+    public async Task GivenAnActiveSubscription_WhenAClientUnsubscribes_ThenClearTheResubscriptionRegistration()
+    {
+        // Arrange
+        var grainId = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        clusterClient
+            .GetGrain<IChatGrain>(grainId)
+            .Returns(grain);
+        var observer = Substitute.For<IChatObserver>();
+        var observerReference = Substitute.For<IChatObserver>();
+        var grainFactory = Substitute.For<IGrainFactory>();
+        grainFactory
+            .CreateObjectReference<IChatObserver>(observer)
+            .Returns(observerReference);
+        var resubscriber = Substitute.For<IResubscriber<GrainSubscription>>();
+        var manager = new GrainObserverManager(
+            clusterClient,
+            grainFactory,
+            resubscriber);
+        await manager.Subscribe(observer, grainId);
+
+        // Act
+        await manager.Unsubscribe(observer, grainId);
+
+        // Assert
+        await resubscriber.Received().Clear();
     }
 
     [Fact(Skip = "No longer relevant (functionality abstracted).")]
@@ -187,7 +250,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             grainFactory,
-            Substitute.For<IResubscriber<GrainObserverManagerState>>());
+            Substitute.For<IResubscriber<GrainSubscription>>());
         await manager.Subscribe(observer, grainId);
         timeProvider.Advance(TimeSpan.FromSeconds(_fixture.RefreshPeriod));
 
@@ -222,7 +285,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             grainFactory,
-            Substitute.For<IResubscriber<GrainObserverManagerState>>());
+            Substitute.For<IResubscriber<GrainSubscription>>());
         await manager.Subscribe(observer, grainId);
         await manager.Unsubscribe(observer, grainId);
 
@@ -247,7 +310,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var manager = new GrainObserverManager(
             clusterClient,
             Substitute.For<IGrainFactory>(),
-            Substitute.For<IResubscriber<GrainObserverManagerState>>());
+            Substitute.For<IResubscriber<GrainSubscription>>());
 
         // Act
         // Assert
