@@ -30,7 +30,14 @@ public class ChatService : IChatService
 
         try
         {
-            await _grainObserverManager.Subscribe(this, chat);
+            var subscribeResult = await _grainObserverManager.Subscribe(this, chat);
+
+            if (!subscribeResult.IsSuccess)
+            {
+                _logger.LogWarning("Failed to join {Chat}: {Message}", chat, subscribeResult.Message);
+
+                return Result.Failure($"Failed to join {chat}: {subscribeResult.Message}");
+            }
         }
         catch (Exception ex)
         {
