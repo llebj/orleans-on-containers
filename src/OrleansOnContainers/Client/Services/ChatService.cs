@@ -9,6 +9,7 @@ public class ChatService : IChatService
     private readonly IGrainObserverManager _grainObserverManager;
     private readonly ILogger<ChatService> _logger;
 
+    // TODO: These fields want to be replaced by properties on the IGrainObserverManager.
     private string? _currentChat;
     private bool _hasValidSubscription => !string.IsNullOrEmpty(_currentChat);
 
@@ -47,7 +48,7 @@ public class ChatService : IChatService
         }
 
         _currentChat = chat;
-        _logger.LogDebug("Successfully joined {Chat}.", chat);
+        _logger.LogInformation("Successfully joined {Chat}.", chat);
 
         return Result.Success();
     }

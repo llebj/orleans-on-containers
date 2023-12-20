@@ -4,6 +4,17 @@ using Microsoft.Extensions.Options;
 
 namespace Client.Services;
 
+/// <summary>
+/// Directly uses a PeriodicTimer to execute a client-provided async delagate.
+/// </summary>
+/// <remarks>
+/// The call to run the PeriodiceTimer within the Register method is not awaited
+/// as doing so would result in the method never returning. This makes it difficult
+/// to test this class without resulting in a race condition. Using a BackgroundService
+/// for the resubscription and providing an API for passing state and delagates into
+/// the service could prove a nicer implementation.
+/// </remarks>
+/// <typeparam name="T"></typeparam>
 public class ResubscriptionTimer<T> : IResubscriber<T>
 {
     private readonly ILogger<ResubscriptionTimer<T>> _logger;
@@ -76,6 +87,7 @@ public class ResubscriptionTimer<T> : IResubscriber<T>
             while (await _timer!.WaitForNextTickAsync(cancellationToken))
             {
                 await _timerDelegate!(_state!);
+                _logger.LogDebug("Executed timer delegate.");
             }
         }
         catch (OperationCanceledException) { }
