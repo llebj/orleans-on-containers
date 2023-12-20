@@ -79,6 +79,34 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
     }
 
     [Fact]
+    public async Task GivenNoActiveSubscription_WhenAClientSuccessfullySubscribes_ThenReturnASuccessResult()
+    {
+        // Arrange
+        var grainId = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        clusterClient
+            .GetGrain<IChatGrain>(grainId)
+            .Returns(grain);
+        var observer = Substitute.For<IChatObserver>();
+        var observerReference = Substitute.For<IChatObserver>();
+        var grainFactory = Substitute.For<IGrainFactory>();
+        grainFactory
+            .CreateObjectReference<IChatObserver>(observer)
+            .Returns(observerReference);
+        var manager = new GrainObserverManager(
+            clusterClient,
+            grainFactory,
+            Substitute.For<IResubscriber<GrainSubscription>>());
+
+        // Act
+        var result = await manager.Subscribe(observer, grainId);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
     public async Task GivenNoActiveSubscription_WhenASubscriptionFails_ThenASecondSuccessfulSubscriptionCanBeMade()
     {
         // Arrange
@@ -113,13 +141,14 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         }
         catch { }
 
+        var result = await manager.Subscribe(observer, grainId);
+
         // Assert
-        // The second call to subscribe should complete without issue.
-        await manager.Subscribe(observer, grainId);
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]
-    public async Task GivenAnActiveSubscription_WhenAClientAttemptsToSubscribe_ThenThrowAnInvalidOperationException()
+    public async Task GivenAnActiveSubscription_WhenAClientAttemptsToSubscribe_ThenReturnAFailureResultWithAMessage()
     {
         // Arrange
         var clusterClient = Substitute.For<IClusterClient>();
@@ -135,8 +164,11 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         await manager.Subscribe(observer, "test");
 
         // Act
+        var result = await manager.Subscribe(observer, "test-2");
+
         // Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.Subscribe(observer, "test-2"));
+        Assert.False(result.IsSuccess);
+        Assert.False(string.IsNullOrEmpty(result.Message));
     }
 
     [Fact(Skip = "No longer relevant (functionality abstracted).")]
@@ -230,6 +262,36 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         await resubscriber.Received().Clear();
     }
 
+    [Fact]
+    public async Task GivenAnActiveSubscription_WhenAClientSuccessfullyUnsubscribes_ThenReturnASuccessResult()
+    {
+        // Arrange
+        var grainId = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        clusterClient
+            .GetGrain<IChatGrain>(grainId)
+            .Returns(grain);
+        var observer = Substitute.For<IChatObserver>();
+        var observerReference = Substitute.For<IChatObserver>();
+        var grainFactory = Substitute.For<IGrainFactory>();
+        grainFactory
+            .CreateObjectReference<IChatObserver>(observer)
+            .Returns(observerReference);
+        var resubscriber = Substitute.For<IResubscriber<GrainSubscription>>();
+        var manager = new GrainObserverManager(
+            clusterClient,
+            grainFactory,
+            resubscriber);
+        await manager.Subscribe(observer, grainId);
+
+        // Act
+        var result = await manager.Unsubscribe(observer, grainId);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+    }
+
     [Fact(Skip = "No longer relevant (functionality abstracted).")]
     public async Task GivenAnActiveSubscriptionThatResubscribes_WhenAClientUnsubscribes_ThenStopResubscribingToTheGrain()
     {
@@ -267,7 +329,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
     }
 
     [Fact]
-    public async Task GivenAnUnsubscribedClient_WhenTheClientSubscribes_ThenRegisterTheNewSubscriptionWithTheGrain()
+    public async Task GivenAnUnsubscribedClient_WhenTheClientSuccessfullySubscribesAgain_ThenReturnASuccessResult()
     {
         // Arrange
         var grainId = "test";
@@ -290,14 +352,14 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         await manager.Unsubscribe(observer, grainId);
 
         // Act
-        await manager.Subscribe(observer, grainId);
+        var result = await manager.Subscribe(observer, grainId);
 
         // Assert
-        await grain.Received().Subscribe(observerReference);
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]
-    public async Task GivenNoActiveSubscription_WhenAClientUnsubscribes_ThenThrowAnInvalidOperationException()
+    public async Task GivenNoActiveSubscription_WhenAClientUnsubscribes_ThenReturnAFailureResultWithAMessage()
     {
         // Arrange
         var grainId = "test";
@@ -313,8 +375,11 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             Substitute.For<IResubscriber<GrainSubscription>>());
 
         // Act
+        var result = await manager.Unsubscribe(observer, grainId);
+
         // Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => manager.Unsubscribe(observer, grainId));
+        Assert.False(result.IsSuccess);
+        Assert.False(string.IsNullOrEmpty(result.Message));
     }
 }
 

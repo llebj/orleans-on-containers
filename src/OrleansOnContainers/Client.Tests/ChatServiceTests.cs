@@ -184,7 +184,7 @@ public class ChatServiceTests : IClassFixture<ChatServiceTestsFixture>
         var message = "error";
         var clusterClient = Substitute.For<IClusterClient>();
         var observerManager = Substitute.For<IGrainObserverManager>();
-        observerManager.Subscribe(Arg.Any<IChatObserver>(), chat).Returns(x => { throw new Exception(message); });
+        observerManager.Subscribe(Arg.Any<IChatObserver>(), chat).Returns<Task<Result>>(x => { throw new Exception(message); });
         var service = new ChatService(clusterClient, observerManager, new NullLogger<ChatService>());
 
         // Act

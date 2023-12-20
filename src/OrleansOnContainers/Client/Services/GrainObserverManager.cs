@@ -19,14 +19,13 @@ public class GrainObserverManager : IGrainObserverManager
         _resubscriber = resubscriber;
     }
 
-    public async Task Subscribe(IChatObserver observer, string grainId)
+    public async Task<Result> Subscribe(IChatObserver observer, string grainId)
     {
         if (_state.IsSubscribed)
         {
             var message = "A subscription is already being managed. Unsubscribe first before registering a new subscription.";
 
-            // Return a Task<Result> from this method rather than throwing an exception.
-            throw new InvalidOperationException(message);
+            return Result.Failure(message);
         }
 
         _state.Set(grainId, _grainFactory.CreateObjectReference<IChatObserver>(observer));
@@ -43,14 +42,15 @@ public class GrainObserverManager : IGrainObserverManager
         }
 
         await _resubscriber.Register(_state, Subscribe);
+
+        return Result.Success();
     }
 
-    public async Task Unsubscribe(IChatObserver observer, string grainId)
+    public async Task<Result> Unsubscribe(IChatObserver observer, string grainId)
     {
         if (!_state.IsSubscribed)
         {
-            // Return a Task<Result> from this method rather than throwing an exception.
-            throw new InvalidOperationException("No subscription currently exists.");
+            return Result.Failure("No subscription currently exists.");
         }
 
         var grain = _clusterClient.GetGrain<IChatGrain>(_state.GrainId);
@@ -58,6 +58,8 @@ public class GrainObserverManager : IGrainObserverManager
         await grain.Unsubscribe(_state.Reference!);
         _state.Clear();
         await _resubscriber.Clear();
+
+        return Result.Success();
     }
 
     private async Task Subscribe(GrainSubscription grainSubscription)
