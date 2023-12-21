@@ -12,10 +12,12 @@ COPY ["Shared/Shared.csproj", "Shared/"]
 RUN dotnet restore "Client/Client.csproj"
 COPY . .
 WORKDIR "/src/Client"
-RUN dotnet build "Client.csproj" -c Release -o /app/build
+ARG Configuration=Release
+RUN dotnet build "Client.csproj" -c $Configuration -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "Client.csproj" -c Release -o /app/publish /p:UseAppHost=false
+ARG Configuration
+RUN dotnet publish "Client.csproj" -c $Configuration -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
