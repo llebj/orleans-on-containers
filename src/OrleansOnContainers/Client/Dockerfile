@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 
-FROM mcr.microsoft.com/dotnet/runtime:8.0.0-alpine3.18-amd64 AS base
+# A debian based image is required here in order to get the console cursor position
+# manipulation to work. I think it is related to debian using dash as the default shell
+# and alpine using ash. Some testing will be required to confirm this.
+FROM mcr.microsoft.com/dotnet/runtime:8.0.0-bookworm-slim-amd64 AS base
 WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0.100-1-alpine3.18-amd64 AS build

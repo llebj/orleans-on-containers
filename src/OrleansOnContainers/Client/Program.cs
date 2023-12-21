@@ -1,4 +1,5 @@
-﻿using Client.Extensions;
+﻿using Client;
+using Client.Extensions;
 using Client.Options;
 using Client.Services;
 using Microsoft.Extensions.Configuration;
@@ -26,6 +27,10 @@ var builder = Host.CreateDefaultBuilder(args)
     {
         serviceCollection.Configure<ClientOptions>(options => options.ClientId = Guid.NewGuid());
         serviceCollection.Configure<ObserverManagerOptions>(configuration.GetSection(ObserverManagerOptions.Key));
+        serviceCollection.AddScoped<IChatService, ChatService>();
+        serviceCollection.AddScoped<IGrainObserverManager, GrainObserverManager>();
+        serviceCollection.AddScoped<IResubscriber<GrainSubscription>, ResubscriptionTimer<GrainSubscription>>();
+        serviceCollection.AddSingleton(TimeProvider.System);
         serviceCollection.AddHostedService<ChatHostedService>();
     })
     .ConfigureLogging(logging =>

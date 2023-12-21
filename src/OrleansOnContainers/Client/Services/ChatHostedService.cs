@@ -1,58 +1,67 @@
-﻿using GrainInterfaces;
+﻿using Client.Options;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Text;
 
 namespace Client.Services;
 
-public class ChatHostedService : BackgroundService, IChatObserver
+internal class ChatHostedService : BackgroundService
 {
-    private readonly IClusterClient _clusterClient;
-    private readonly ILogger<ChatHostedService> _logger;
-    private readonly Guid _clientId = Guid.NewGuid();
     private readonly string _chatId = "test";
 
-    private IChatObserver? _reference;
+    private readonly StringBuilder _buffer = new();
+    private readonly IChatService _chatService;
+    private readonly ILogger<ChatHostedService> _logger;
+    private readonly ClientOptions _options;
 
     public ChatHostedService(
-        IClusterClient clusterClient,
-        ILogger<ChatHostedService> logger)
+        IChatService chatService,
+        ILogger<ChatHostedService> logger,
+        IOptions<ClientOptions> options)
     {
-        _clusterClient = clusterClient;
+        _chatService = chatService;
         _logger = logger;
+        _options = options.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Executing hosted service.");
-        var chatGrain = _clusterClient.GetGrain<IChatGrain>(_chatId);
-        _logger.LogDebug("Subscribing to {Chat}.", _chatId);
-        await chatGrain.Subscribe(_reference!);
-        var random = new Random();
+        await _chatService.Join(_chatId, _options.ClientId);
+        Console.WriteLine($"Joined {_chatId}.");
+        var stringBuilder = new StringBuilder();
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var message = $"It is {DateTime.Now.TimeOfDay}";
-            _logger.LogDebug("Sending message to {Chat}.", _chatId);
-            await chatGrain.SendMessage(_clientId, message);
+            var keyInfo = Console.ReadKey(true);
 
-            await Task.Delay(random.Next(5000, 60000), stoppingToken);
+            if (keyInfo.Modifiers == ConsoleModifiers.Control &&
+                keyInfo.Key == ConsoleKey.Q)
+            {
+                break;
+            }
+            else if (keyInfo.Key != ConsoleKey.Enter)
+            {
+                Console.Write(keyInfo.KeyChar);
+                stringBuilder.Append(keyInfo.KeyChar);
+
+                continue;
+            }
+
+            ClearCurrentConsoleLine(stringBuilder.Length);
+            await _chatService.SendMessage(_options.ClientId, _buffer.ToString());
+            stringBuilder.Clear();
         }
 
-        _logger.LogDebug("Unsubscribing to {Chat}.", _chatId);
-        await chatGrain.Unsubscribe(_reference!);
+        Console.WriteLine($"Leaving {_chatId}.");
+        _logger.LogInformation("Finished executing hosted service.");
     }
 
-    public Task ReceiveMessage(Guid clientId, string message)
+    private static void ClearCurrentConsoleLine(int width)
     {
-        _logger.LogDebug("{Client} says \"{Message}\".", clientId, message);
-
-        return Task.CompletedTask;
-    }
-
-    public override Task StartAsync(CancellationToken cancellationToken)
-    {
-        _reference = _clusterClient.CreateObjectReference<IChatObserver>(this);
-
-        return base.StartAsync(cancellationToken);
+        Console.SetCursorPosition(0, Console.CursorTop);
+        Console.Write(new string(' ', width));
+        Console.SetCursorPosition(0, Console.CursorTop);
     }
 }
