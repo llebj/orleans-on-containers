@@ -13,15 +13,18 @@ internal class ChatHostedService : BackgroundService
     private readonly StringBuilder _buffer = new();
     private readonly IChatService _chatService;
     private readonly ILogger<ChatHostedService> _logger;
+    private readonly IMessageStream _messageStream;
     private readonly ClientOptions _options;
 
     public ChatHostedService(
         IChatService chatService,
         ILogger<ChatHostedService> logger,
+        IMessageStream messageStream,
         IOptions<ClientOptions> options)
     {
         _chatService = chatService;
         _logger = logger;
+        _messageStream = messageStream;
         _options = options.Value;
     }
 
@@ -30,7 +33,6 @@ internal class ChatHostedService : BackgroundService
         _logger.LogInformation("Executing hosted service.");
         await _chatService.Join(_chatId, _options.ClientId);
         Console.WriteLine($"Joined {_chatId}.");
-        var stringBuilder = new StringBuilder();
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -44,18 +46,25 @@ internal class ChatHostedService : BackgroundService
             else if (keyInfo.Key != ConsoleKey.Enter)
             {
                 Console.Write(keyInfo.KeyChar);
-                stringBuilder.Append(keyInfo.KeyChar);
+                _buffer.Append(keyInfo.KeyChar);
 
                 continue;
             }
 
-            ClearCurrentConsoleLine(stringBuilder.Length);
+            ClearCurrentConsoleLine(_buffer.Length);
             await _chatService.SendMessage(_options.ClientId, _buffer.ToString());
-            stringBuilder.Clear();
+            _buffer.Clear();
         }
 
         Console.WriteLine($"Leaving {_chatId}.");
         _logger.LogInformation("Finished executing hosted service.");
+    }
+
+    public override async Task StartAsync(CancellationToken cancellationToken)
+    {
+        _messageStream.Messages.Subscribe(Console.WriteLine);
+
+        await base.StartAsync(cancellationToken);
     }
 
     private static void ClearCurrentConsoleLine(int width)
