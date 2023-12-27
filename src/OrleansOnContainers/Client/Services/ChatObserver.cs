@@ -11,16 +11,16 @@ namespace Client.Services;
 /// </remarks>
 internal class ChatObserver : IChatObserver
 {
-    private readonly IIncomingMessages _incomingMessages;
+    private readonly IMessageStream _incomingMessages;
 
     public ChatObserver(
-        IIncomingMessages incomingMessages)
+        IMessageStream incomingMessages)
     {
         _incomingMessages = incomingMessages;
     }
 
     public async Task ReceiveMessage(Guid clientId, string message)
     {
-        await _incomingMessages.ReceiveMessage(new ReceivedMessage(clientId, message));
+        await _incomingMessages.Push(new ReceivedMessage(clientId, message));
     }
 }

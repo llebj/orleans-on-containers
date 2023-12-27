@@ -1,10 +1,10 @@
 ﻿namespace Client.Services;
 
-internal interface IIncomingMessages
+internal interface IMessageStream
 {
     IObservable<ReceivedMessage> Messages { get; }
 
-    Task ReceiveMessage(ReceivedMessage message);
+    Task Push(ReceivedMessage message);
 }
 
 internal class ReceivedMessage(Guid clientId, string message)
