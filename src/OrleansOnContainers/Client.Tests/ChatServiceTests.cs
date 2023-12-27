@@ -94,38 +94,6 @@ public class ChatServiceTests
         }
     }
 
-    public class ReceiveMessageTests : IClassFixture<ChatServiceTestsFixture>
-    {
-        private readonly ChatServiceTestsFixture _fixture;
-
-        public ReceiveMessageTests(ChatServiceTestsFixture fixture)
-        {
-            _fixture = fixture;
-        }
-
-        [Fact]
-        public async Task WhenTheServiceReceivesAMessage_ThenInvokeTheMessageReceivedEventHandler()
-        {
-            // Arrange
-            var service = new ChatService(Substitute.For<IChatObserver>(), Substitute.For<IClusterClient>(), Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
-            var handler = Substitute.For<EventHandler<MessageReceivedEventArgs>>();
-            service.MessageReceived += handler;
-            var message = "test";
-
-            // Act
-            await service.ReceiveMessage(_fixture.ClientId, message);
-
-            // Assert
-            handler
-                .Received()
-                .Invoke(
-                    service,
-                    Arg.Is<MessageReceivedEventArgs>(x =>
-                        x.Clientid == _fixture.ClientId &&
-                        x.Message == message));
-        }
-    }
-
     public class SendMessageTests : IClassFixture<ChatServiceTestsFixture>
     {
         private readonly ChatServiceTestsFixture _fixture;

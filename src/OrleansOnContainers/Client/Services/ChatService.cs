@@ -26,8 +26,6 @@ public class ChatService : IChatService
         _logger = logger;
     }
 
-    public event EventHandler<MessageReceivedEventArgs>? MessageReceived;
-
     public async Task<Result> Join(string chat, Guid clientId)
     {
         _logger.LogDebug("Attempting to join {Chat}.", chat);
@@ -54,15 +52,6 @@ public class ChatService : IChatService
         _logger.LogInformation("Successfully joined {Chat}.", chat);
 
         return Result.Success();
-    }
-
-    public Task ReceiveMessage(Guid clientId, string message)
-    {
-        _logger.LogDebug("Received message from {Client}", clientId);
-        var eventArgs = new MessageReceivedEventArgs(clientId, message);
-        MessageReceived?.Invoke(this, eventArgs);
-
-        return Task.CompletedTask;
     }
 
     public async Task<Result> SendMessage(Guid clientId, string message)
@@ -93,19 +82,4 @@ public class ChatService : IChatService
 
         return Result.Success();
     }
-}
-
-public class MessageReceivedEventArgs : EventArgs
-{
-    public MessageReceivedEventArgs(
-        Guid clientId,
-        string message)
-    {
-        Clientid = clientId;
-        Message = message;
-    }
-
-    public Guid Clientid { get; init; }
-
-    public string Message { get; init; }
 }
