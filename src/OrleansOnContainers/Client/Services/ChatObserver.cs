@@ -1,4 +1,5 @@
 ﻿using GrainInterfaces;
+using Microsoft.Extensions.Logging;
 
 namespace Client.Services;
 
@@ -12,16 +13,20 @@ namespace Client.Services;
 /// </remarks>
 internal class ChatObserver : IChatObserver
 {
+    private readonly ILogger<ChatObserver> _logger;
     private readonly IMessageStream _incomingMessages;
 
     public ChatObserver(
+        ILogger<ChatObserver> logger,
         IMessageStream incomingMessages)
     {
+        _logger = logger;
         _incomingMessages = incomingMessages;
     }
 
     public async Task ReceiveMessage(Guid clientId, string message)
     {
+        _logger.LogDebug("Received message from {Client}.", clientId);
         await _incomingMessages.Push(new ReceivedMessage(clientId, message));
     }
 }
