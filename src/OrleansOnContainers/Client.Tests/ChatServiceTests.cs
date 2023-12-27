@@ -20,19 +20,20 @@ public class ChatServiceTests
         }
 
         [Fact]
-        public async Task WhenAClientRequestsToJoinAChat_ThenSubscribeToChatMessages()
+        public async Task WhenAClientRequestsToJoinAChat_ThenSubscribeToChatMessagesUsingTheChatObserver()
         {
             // Arrange
             var chat = "test";
+            var chatObserver = Substitute.For<IChatObserver>();
             var clusterClient = Substitute.For<IClusterClient>();
             var observerManager = Substitute.For<IGrainObserverManager>();
-            var service = new ChatService(clusterClient, observerManager, new NullLogger<ChatService>());
+            var service = new ChatService(chatObserver, clusterClient, observerManager, new NullLogger<ChatService>());
 
             // Act
             await service.Join(chat, _fixture.ClientId);
 
             // Assert
-            await observerManager.Received().Subscribe(service, chat);
+            await observerManager.Received().Subscribe(chatObserver, chat);
         }
 
         [Fact]
@@ -40,10 +41,11 @@ public class ChatServiceTests
         {
             // Arrange
             var chat = "test";
+            var chatObserver = Substitute.For<IChatObserver>();
             var clusterClient = Substitute.For<IClusterClient>();
             var observerManager = Substitute.For<IGrainObserverManager>();
             observerManager.Subscribe(Arg.Any<IChatObserver>(), chat).Returns(Result.Success());
-            var service = new ChatService(clusterClient, observerManager, new NullLogger<ChatService>());
+            var service = new ChatService(chatObserver, clusterClient, observerManager, new NullLogger<ChatService>());
 
             // Act
             var result = await service.Join(chat, _fixture.ClientId);
@@ -58,10 +60,11 @@ public class ChatServiceTests
             // Arrange
             var chat = "test";
             var message = "error";
+            var chatObserver = Substitute.For<IChatObserver>();
             var clusterClient = Substitute.For<IClusterClient>();
             var observerManager = Substitute.For<IGrainObserverManager>();
             observerManager.Subscribe(Arg.Any<IChatObserver>(), chat).Returns<Task<Result>>(x => { throw new Exception(message); });
-            var service = new ChatService(clusterClient, observerManager, new NullLogger<ChatService>());
+            var service = new ChatService(chatObserver, clusterClient, observerManager, new NullLogger<ChatService>());
 
             // Act
             var result = await service.Join(chat, _fixture.ClientId);
@@ -76,10 +79,11 @@ public class ChatServiceTests
         {
             // Arrange
             var chat = "test";
+            var chatObserver = Substitute.For<IChatObserver>();
             var clusterClient = Substitute.For<IClusterClient>();
             var observerManager = Substitute.For<IGrainObserverManager>();
             observerManager.Subscribe(Arg.Any<IChatObserver>(), chat).Returns(Result.Failure("error"));
-            var service = new ChatService(clusterClient, observerManager, new NullLogger<ChatService>());
+            var service = new ChatService(chatObserver, clusterClient, observerManager, new NullLogger<ChatService>());
 
             // Act
             var result = await service.Join(chat, _fixture.ClientId);
@@ -103,7 +107,7 @@ public class ChatServiceTests
         public async Task WhenTheServiceReceivesAMessage_ThenInvokeTheMessageReceivedEventHandler()
         {
             // Arrange
-            var service = new ChatService(Substitute.For<IClusterClient>(), Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
+            var service = new ChatService(Substitute.For<IChatObserver>(), Substitute.For<IClusterClient>(), Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
             var handler = Substitute.For<EventHandler<MessageReceivedEventArgs>>();
             service.MessageReceived += handler;
             var message = "test";
@@ -136,10 +140,11 @@ public class ChatServiceTests
         {
             // Arrange
             var chat = "chat";
+            var chatObserver = Substitute.For<IChatObserver>();
             var clusterClient = Substitute.For<IClusterClient>();
             var observerManager = Substitute.For<IGrainObserverManager>();
             observerManager.Subscribe(Arg.Any<IChatObserver>(), chat).Returns(Result.Success());
-            var service = new ChatService(clusterClient, observerManager, new NullLogger<ChatService>());
+            var service = new ChatService(chatObserver, clusterClient, observerManager, new NullLogger<ChatService>());
             await service.Join(chat, _fixture.ClientId);
 
             // Act
@@ -154,6 +159,7 @@ public class ChatServiceTests
         {
             // Arrange
             var chat = "chat";
+            var chatObserver = Substitute.For<IChatObserver>();
             var clusterClient = Substitute.For<IClusterClient>();
             var grain = Substitute.For<IChatGrain>();
             clusterClient
@@ -161,7 +167,7 @@ public class ChatServiceTests
                 .Returns(grain);
             var observerManager = Substitute.For<IGrainObserverManager>();
             observerManager.Subscribe(Arg.Any<IChatObserver>(), chat).Returns(Result.Success());
-            var service = new ChatService(clusterClient, observerManager, new NullLogger<ChatService>());
+            var service = new ChatService(chatObserver, clusterClient, observerManager, new NullLogger<ChatService>());
             await service.Join(chat, _fixture.ClientId);
             var message = "test";
 
@@ -177,6 +183,7 @@ public class ChatServiceTests
         {
             // Arrange
             var chat = "chat";
+            var chatObserver = Substitute.For<IChatObserver>();
             var clusterClient = Substitute.For<IClusterClient>();
             var grain = Substitute.For<IChatGrain>();
             clusterClient
@@ -184,7 +191,7 @@ public class ChatServiceTests
                 .Returns(grain);
             var observerManager = Substitute.For<IGrainObserverManager>();
             observerManager.Subscribe(Arg.Any<IChatObserver>(), chat).Returns(Result.Success());
-            var service = new ChatService(clusterClient, observerManager, new NullLogger<ChatService>());
+            var service = new ChatService(chatObserver, clusterClient, observerManager, new NullLogger<ChatService>());
             await service.Join(chat, _fixture.ClientId);
             var message = "test";
 
@@ -200,12 +207,13 @@ public class ChatServiceTests
         {
             // Arrange
             var chat = "chat";
+            var chatObserver = Substitute.For<IChatObserver>();
             var clusterClient = Substitute.For<IClusterClient>();
             var grain = Substitute.For<IChatGrain>();
             clusterClient
                 .GetGrain<IChatGrain>(chat)
                 .Returns(grain);
-            var service = new ChatService(clusterClient, Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
+            var service = new ChatService(chatObserver, clusterClient, Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
             var message = "test";
 
             // Act
@@ -221,6 +229,7 @@ public class ChatServiceTests
         {
             // Arrange
             var chat = "chat";
+            var chatObserver = Substitute.For<IChatObserver>();
             var clusterClient = Substitute.For<IClusterClient>();
             var grain = Substitute.For<IChatGrain>();
             grain
@@ -229,7 +238,7 @@ public class ChatServiceTests
             clusterClient
                 .GetGrain<IChatGrain>(chat)
                 .Returns(grain);
-            var service = new ChatService(clusterClient, Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
+            var service = new ChatService(chatObserver, clusterClient, Substitute.For<IGrainObserverManager>(), new NullLogger<ChatService>());
             await service.Join(chat, _fixture.ClientId);
             var message = "test";
 

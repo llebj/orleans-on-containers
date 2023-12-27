@@ -5,6 +5,7 @@ namespace Client.Services;
 
 public class ChatService : IChatService
 {
+    private readonly IChatObserver _chatObserver;
     private readonly IClusterClient _clusterClient;
     private readonly IGrainObserverManager _grainObserverManager;
     private readonly ILogger<ChatService> _logger;
@@ -14,10 +15,12 @@ public class ChatService : IChatService
     private bool _hasValidSubscription => !string.IsNullOrEmpty(_currentChat);
 
     public ChatService(
+        IChatObserver chatObserver,
         IClusterClient clusterClient,
         IGrainObserverManager grainObserverManager,
         ILogger<ChatService> logger)
     {
+        _chatObserver = chatObserver;
         _clusterClient = clusterClient;
         _grainObserverManager = grainObserverManager;
         _logger = logger;
@@ -31,7 +34,7 @@ public class ChatService : IChatService
 
         try
         {
-            var subscribeResult = await _grainObserverManager.Subscribe(this, chat);
+            var subscribeResult = await _grainObserverManager.Subscribe(_chatObserver, chat);
 
             if (!subscribeResult.IsSuccess)
             {
