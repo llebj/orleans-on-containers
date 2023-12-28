@@ -62,13 +62,23 @@ internal class ChatHostedService : BackgroundService
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        _messageStream.Messages.Subscribe(Console.WriteLine);
+        _ =_messageStream.Messages.Subscribe(message =>
+        {
+            ClearCurrentConsoleLine(_buffer.Length);
+            Console.WriteLine(message);
+            Console.Write(_buffer.ToString());
+        });
 
         await base.StartAsync(cancellationToken);
     }
 
     private static void ClearCurrentConsoleLine(int width)
     {
+        if (width == 0)
+        {
+            return;
+        }
+
         Console.SetCursorPosition(0, Console.CursorTop);
         Console.Write(new string(' ', width));
         Console.SetCursorPosition(0, Console.CursorTop);
