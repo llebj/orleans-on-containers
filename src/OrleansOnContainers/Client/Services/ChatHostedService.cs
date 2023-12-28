@@ -12,6 +12,7 @@ internal class ChatHostedService : BackgroundService
 
     private readonly StringBuilder _buffer = new();
     private readonly IChatService _chatService;
+    private readonly object _inputLock = new();
     private readonly ILogger<ChatHostedService> _logger;
     private readonly IMessageStream _messageStream;
     private readonly ClientOptions _options;
@@ -45,15 +46,16 @@ internal class ChatHostedService : BackgroundService
             }
             else if (keyInfo.Key != ConsoleKey.Enter)
             {
-                Console.Write(keyInfo.KeyChar);
-                _buffer.Append(keyInfo.KeyChar);
+                lock (_inputLock)
+                {
+                    Console.Write(keyInfo.KeyChar);
+                    _buffer.Append(keyInfo.KeyChar);
+                }
 
                 continue;
             }
 
-            ClearCurrentConsoleLine(_buffer.Length);
-            await _chatService.SendMessage(_options.ClientId, _buffer.ToString());
-            _buffer.Clear();
+            await SendMessage();
         }
 
         Console.WriteLine($"Leaving {_chatId}.");
@@ -64,9 +66,12 @@ internal class ChatHostedService : BackgroundService
     {
         _ =_messageStream.Messages.Subscribe(message =>
         {
-            ClearCurrentConsoleLine(_buffer.Length);
-            Console.WriteLine(message);
-            Console.Write(_buffer.ToString());
+            lock (_inputLock)
+            {
+                ClearCurrentConsoleLine(_buffer.Length);
+                Console.WriteLine(message);
+                Console.Write(_buffer.ToString());
+            }
         });
 
         await base.StartAsync(cancellationToken);
@@ -82,5 +87,20 @@ internal class ChatHostedService : BackgroundService
         Console.SetCursorPosition(0, Console.CursorTop);
         Console.Write(new string(' ', width));
         Console.SetCursorPosition(0, Console.CursorTop);
+    }
+
+    private async Task SendMessage()
+    {
+        // This seems a bit dodgy...
+        Task sendMessageTask;
+
+        lock (_inputLock)
+        {
+            ClearCurrentConsoleLine(_buffer.Length);
+            sendMessageTask = _chatService.SendMessage(_options.ClientId, _buffer.ToString());
+            _buffer.Clear();
+        }
+
+        await sendMessageTask;
     }
 }
