@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Shared;
 using System.Reactive.Subjects;
 
 namespace Client.Services;
@@ -9,7 +10,7 @@ namespace Client.Services;
 /// </summary>
 internal class MessageStream : IMessageStream, IDisposable
 {
-    private readonly Subject<ReceivedMessage> _receivedMessagesSubject = new();
+    private readonly Subject<ChatMessage> _receivedMessagesSubject = new();
     private readonly ILogger<MessageStream> _logger;
 
     public MessageStream(ILogger<MessageStream> logger)
@@ -17,14 +18,14 @@ internal class MessageStream : IMessageStream, IDisposable
         _logger = logger;
     }
 
-    public IObservable<ReceivedMessage> Messages => _receivedMessagesSubject;
+    public IObservable<ChatMessage> Messages => _receivedMessagesSubject;
 
     public void Dispose()
     {
         _receivedMessagesSubject.Dispose();
     }
 
-    public Task Push(ReceivedMessage message)
+    public Task Push(ChatMessage message)
     {
         _logger.LogDebug("Pushing message.");
         _receivedMessagesSubject?.OnNext(message);

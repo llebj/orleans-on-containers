@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Shared;
+using Shared.Extensions;
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
@@ -23,6 +25,14 @@ var builder = Host.CreateDefaultBuilder(args)
     .UseOrleansClient(client =>
     {
         client.ConfigureStaticClustering(configuration);
+
+        // A System.Text.Json serializer has to be used here as I was unable to get the orleans serialization to work.
+        // I attempted to use the GenerateSerializerAttribute coupled with IdAttribute, however the code generator
+        // was unable to find the copier as the ChatMessage class resides in a different assembly.
+        // I then tried using the GenerateCodeForDeclaringAssembly to generate for ChatMessage, but that required
+        // public setters even though I declared the type as being Immutable and even then, it couldn't locate the
+        // copier.
+        client.Services.AddJsonSerializerForAssembly(typeof(ChatMessage));
     })
     .ConfigureServices(serviceCollection =>
     {

@@ -3,6 +3,7 @@ using Grains.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orleans.Utilities;
+using Shared;
 
 namespace Grains;
 
@@ -21,8 +22,10 @@ public class ChatGrain : Grain, IChatGrain
 
     public Task SendMessage(Guid clientId, string message)
     {
-        _logger.LogDebug("Sending message from {ClientId}.", clientId);
-        _subscriptionManager.Notify(o => o.ReceiveMessage(clientId, message));
+        _logger.LogDebug("{ClientId} sent message to {PrimaryKey}.", clientId, this.GetPrimaryKeyString());
+
+        var chatMessage = new ChatMessage(this.GetPrimaryKeyString(), clientId, message);
+        _subscriptionManager.Notify(o => o.ReceiveMessage(chatMessage));
 
         return Task.CompletedTask;
     }

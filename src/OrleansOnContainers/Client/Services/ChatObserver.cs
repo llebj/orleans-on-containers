@@ -1,5 +1,6 @@
 ﻿using GrainInterfaces;
 using Microsoft.Extensions.Logging;
+using Shared;
 
 namespace Client.Services;
 
@@ -24,9 +25,9 @@ internal class ChatObserver : IChatObserver
         _incomingMessages = incomingMessages;
     }
 
-    public async Task ReceiveMessage(Guid clientId, string message)
+    public async Task ReceiveMessage(ChatMessage message)
     {
-        _logger.LogDebug("Received message from {Client}.", clientId);
-        await _incomingMessages.Push(new ReceivedMessage(clientId, message));
+        _logger.LogDebug("Received message from {Client}.", message.ClientId);
+        await _incomingMessages.Push(message);
     }
 }

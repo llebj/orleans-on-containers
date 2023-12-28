@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Shared;
+using Shared.Extensions;
 using Silo.Extensions;
 
 var configuration = new ConfigurationBuilder()
@@ -14,6 +16,7 @@ var builder = Host.CreateDefaultBuilder(args)
     .UseOrleans(silo =>
     {
         silo.ConfigureDevelopmentClustering(configuration);
+        silo.Services.AddJsonSerializerForAssembly(typeof(ChatMessage));
     })
     .ConfigureServices(serviceCollection =>
     {

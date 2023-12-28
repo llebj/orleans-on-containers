@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Orleans.Runtime" Version="7.2.4" />
+    <PackageReference Include="Microsoft.Orleans.Serialization.SystemTextJson" Version="7.2.4" />
   </ItemGroup>
 
 </Project>
