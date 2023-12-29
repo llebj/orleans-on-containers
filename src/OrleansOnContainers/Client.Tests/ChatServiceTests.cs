@@ -123,31 +123,7 @@ public class ChatServiceTests
         }
 
         [Fact]
-        public async Task GivenAnActiveSubscription_WhenAClientSendsAMessage_ThenForwardTheMessageToTheChatGrain()
-        {
-            // Arrange
-            var chat = "chat";
-            var chatObserver = Substitute.For<IChatObserver>();
-            var clusterClient = Substitute.For<IClusterClient>();
-            var grain = Substitute.For<IChatGrain>();
-            clusterClient
-                .GetGrain<IChatGrain>(chat)
-                .Returns(grain);
-            var observerManager = Substitute.For<IGrainObserverManager>();
-            observerManager.Subscribe(Arg.Any<IChatObserver>(), chat).Returns(Result.Success());
-            var service = new ChatService(chatObserver, clusterClient, observerManager, new NullLogger<ChatService>());
-            await service.Join(chat, _fixture.ClientId);
-            var message = "test";
-
-            // Act
-            await service.SendMessage(_fixture.ClientId, message);
-
-            // Assert
-            await grain.Received().SendMessage(_fixture.ClientId, message);
-        }
-
-        [Fact]
-        public async Task GivenAnActiveSubscription_WhenAClientSendsAMessageAndTheMessageIsSent_ThenReturnASuccessResult()
+        public async Task GivenAnActiveSubscription_WhenAClientSendsAMessage_ThenSendTheMessageAndReturnASuccessResult()
         {
             // Arrange
             var chat = "chat";
@@ -167,6 +143,7 @@ public class ChatServiceTests
             var result = await service.SendMessage(_fixture.ClientId, message);
 
             // Assert
+            await grain.Received().SendMessage(_fixture.ClientId, message);
             Assert.True(result.IsSuccess);
         }
 
