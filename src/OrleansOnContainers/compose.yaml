@@ -1,0 +1,26 @@
+name: orleans-on-containers
+
+services:
+  client:
+    build:
+      args:
+        - Configuration=Release
+      context: .
+      dockerfile: .\Client\Dockerfile
+    depends_on:
+      - silo
+    environment:
+      - SiloEndpoints__0__HostName=silo
+    stdin_open: true
+    tty: true
+    deploy:
+      replicas: 2
+
+  silo:
+    build:
+      args:
+        - Configuration=Release
+      context: .
+      dockerfile: .\Silo\Dockerfile
+    environment:
+      - PrimarySilo__HostName=silo
