@@ -8,22 +8,26 @@ namespace Client.Services;
 
 internal class ChatHostedService : BackgroundService
 {
-    private readonly string _chatId = "test";
-
+    // TODO: This class is doing way too much: split out console functionality.
     private readonly StringBuilder _buffer = new();
-    private readonly IChatService _chatService;
+    private readonly string _chatId = "test";
     private readonly object _inputLock = new();
+
+    private readonly IChatService _chatService;
+    private readonly IHostApplicationLifetime _lifetime;
     private readonly ILogger<ChatHostedService> _logger;
     private readonly IMessageStream _messageStream;
     private readonly ClientOptions _options;
 
     public ChatHostedService(
         IChatService chatService,
+        IHostApplicationLifetime lifetime,
         ILogger<ChatHostedService> logger,
         IMessageStream messageStream,
         IOptions<ClientOptions> options)
     {
         _chatService = chatService;
+        _lifetime = lifetime;
         _logger = logger;
         _messageStream = messageStream;
         _options = options.Value;
@@ -37,6 +41,7 @@ internal class ChatHostedService : BackgroundService
         if (!joinResult.IsSuccess)
         {
             SystemMessage.WriteLine(joinResult.Message);
+            _lifetime.StopApplication();
 
             return;
         }
@@ -73,6 +78,7 @@ internal class ChatHostedService : BackgroundService
 
         SystemMessage.WriteLine($"Leaving {_chatId}.");
         _logger.LogInformation("Finished executing hosted service.");
+        _lifetime.StopApplication();
     }
 
     public override async Task StartAsync(CancellationToken cancellationToken)
