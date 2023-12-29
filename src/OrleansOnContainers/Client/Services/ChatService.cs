@@ -56,6 +56,11 @@ public class ChatService : IChatService
 
     public async Task<Result> SendMessage(Guid clientId, string message)
     {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return Result.Success();
+        }
+
         _logger.LogDebug("Sending message to chat {Chat}", _currentChat);
 
         if (!_hasValidSubscription)

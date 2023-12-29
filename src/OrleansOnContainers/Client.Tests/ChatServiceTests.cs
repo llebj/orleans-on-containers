@@ -217,6 +217,32 @@ public class ChatServiceTests
             Assert.False(result.IsSuccess);
             Assert.False(string.IsNullOrEmpty(message));
         }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData(" ")]
+        public async Task GivenAnActiveSubscription_WhenAClientSendsAnEmptyMessage_ThenDoNotSendTheMessageAndReturnASuccessResult(string message)
+        {
+            // Arrange
+            var chat = "chat";
+            var chatObserver = Substitute.For<IChatObserver>();
+            var clusterClient = Substitute.For<IClusterClient>();
+            var grain = Substitute.For<IChatGrain>();
+            clusterClient
+                .GetGrain<IChatGrain>(chat)
+                .Returns(grain);
+            var observerManager = Substitute.For<IGrainObserverManager>();
+            observerManager.Subscribe(Arg.Any<IChatObserver>(), chat).Returns(Result.Success());
+            var service = new ChatService(chatObserver, clusterClient, observerManager, new NullLogger<ChatService>());
+            await service.Join(chat, _fixture.ClientId);
+
+            // Act
+            var result = await service.SendMessage(_fixture.ClientId, message);
+
+            // Assert
+            await grain.DidNotReceiveWithAnyArgs().SendMessage(Arg.Any<Guid>(), Arg.Any<string>());
+            Assert.True(result.IsSuccess);
+        }
     }
 }
 

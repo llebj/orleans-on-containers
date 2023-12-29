@@ -119,6 +119,6 @@ internal class ChatHostedService : BackgroundService
             _buffer.Clear();
         }
 
-        return await _chatService.SendMessage(_options.ClientId, message);
+        return await _chatService.SendMessage(_options.ClientId, message.Trim());
     }
 }
