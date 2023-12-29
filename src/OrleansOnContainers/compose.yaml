@@ -2,6 +2,7 @@ name: orleans-on-containers
 
 services:
   client:
+    image: orleans-client
     build:
       args:
         - Configuration=Release
@@ -17,6 +18,7 @@ services:
       replicas: 2
 
   silo:
+    image: orleans-silo
     build:
       args:
         - Configuration=Release

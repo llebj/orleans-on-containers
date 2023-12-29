@@ -1,0 +1,12 @@
+services:
+  client:
+    image: orleans-client:debug
+    build:
+      args:
+        - Configuration=Debug
+
+  silo:
+    image: orleans-silo:debug
+    build:
+      args:
+        - Configuration=Debug
