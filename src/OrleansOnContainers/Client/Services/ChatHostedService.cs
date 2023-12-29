@@ -52,8 +52,8 @@ internal class ChatHostedService : BackgroundService
         {
             var keyInfo = Console.ReadKey(true);
 
-            if (keyInfo.Modifiers == ConsoleModifiers.Control &&
-                keyInfo.Key == ConsoleKey.Q)
+            if ((keyInfo.Modifiers == ConsoleModifiers.Control && keyInfo.Key == ConsoleKey.Q) || 
+                keyInfo.Key == ConsoleKey.Escape)
             {
                 break;
             }
