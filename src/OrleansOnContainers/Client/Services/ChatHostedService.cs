@@ -32,8 +32,16 @@ internal class ChatHostedService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Executing hosted service.");
-        await _chatService.Join(_chatId, _options.ClientId);
-        Console.WriteLine($"Joined {_chatId}.");
+        var joinResult = await _chatService.Join(_chatId, _options.ClientId);
+
+        if (!joinResult.IsSuccess)
+        {
+            SystemMessage.WriteLine(joinResult.Message);
+
+            return;
+        }
+
+        SystemMessage.WriteLine($"Joined {_chatId} as {_options.ClientId}.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -55,10 +63,15 @@ internal class ChatHostedService : BackgroundService
                 continue;
             }
 
-            await SendMessage();
+            var messageResult = await SendMessage();
+
+            if (!messageResult.IsSuccess)
+            {
+                SystemMessage.WriteLine(messageResult.Message);
+            }
         }
 
-        Console.WriteLine($"Leaving {_chatId}.");
+        SystemMessage.WriteLine($"Leaving {_chatId}.");
         _logger.LogInformation("Finished executing hosted service.");
     }
 
@@ -89,18 +102,17 @@ internal class ChatHostedService : BackgroundService
         Console.SetCursorPosition(0, Console.CursorTop);
     }
 
-    private async Task SendMessage()
+    private async Task<Result> SendMessage()
     {
-        // This seems a bit dodgy...
-        Task sendMessageTask;
+        var message = string.Empty;
 
         lock (_inputLock)
         {
+            message = _buffer.ToString();
             ClearCurrentConsoleLine(_buffer.Length);
-            sendMessageTask = _chatService.SendMessage(_options.ClientId, _buffer.ToString());
             _buffer.Clear();
         }
 
-        await sendMessageTask;
+        return await _chatService.SendMessage(_options.ClientId, message);
     }
 }
