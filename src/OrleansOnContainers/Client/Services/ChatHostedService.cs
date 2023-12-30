@@ -93,7 +93,7 @@ internal class ChatHostedService : BackgroundService
         {
             lock (_inputLock)
             {
-                ClearCurrentConsoleLine(_buffer.Length);
+                ClearCharacters(_buffer.Length);
                 Console.WriteLine(message);
                 Console.Write(_buffer.ToString());
             }
@@ -102,18 +102,32 @@ internal class ChatHostedService : BackgroundService
         await base.StartAsync(cancellationToken);
     }
 
-    private static void ClearCurrentConsoleLine(int width)
+    // Beware! Adding the ability to move the cursor left and right will break this method!
+    private static void ClearCharacters(int charactarsRemaining)
     {
-        if (width == 0)
+        if (charactarsRemaining == 0)
         {
             return;
         }
 
-        // TODO: Modify this method to clear all buffered characters that have been
-        // written to the console, rather than just the current line.
+        // If this method has been called recursively then the cursor will be positioned
+        // on top of the final character in the line. In this case there will be 
+        // [cursorPosition + 1] characters in the current line, as opposed to [cursorPosition] characters.
+        var clearCount = Console.CursorLeft == Console.BufferWidth - 1 ? 
+            Console.CursorLeft + 1 :
+            Console.CursorLeft;
         Console.SetCursorPosition(0, Console.CursorTop);
-        Console.Write(new string(' ', width));
+        Console.Write(new string(' ', clearCount));
         Console.SetCursorPosition(0, Console.CursorTop);
+
+        if (clearCount == charactarsRemaining)
+        {
+            return;
+        }
+
+        // We need to continue clearing lines until there are no characters remaining.
+        Console.SetCursorPosition(Console.BufferWidth - 1, Console.CursorTop - 1);
+        ClearCharacters(charactarsRemaining - clearCount);
     }
 
     private async Task<Result> SendMessage()
@@ -123,7 +137,7 @@ internal class ChatHostedService : BackgroundService
         lock (_inputLock)
         {
             message = _buffer.ToString();
-            ClearCurrentConsoleLine(_buffer.Length);
+            ClearCharacters(_buffer.Length);
             _buffer.Clear();
         }
 
@@ -147,8 +161,8 @@ internal class ChatHostedService : BackgroundService
                 // If the cursor is at the left-most position then we know that the next character
                 // to remove must be on the previous line, so we first move the cursor to the end
                 // position on the previous line (we know that there are characters on the previous
-                // line because the buffer contains characters.). We then write a blank character
-                // followed by a new-line and then move the cursor back to the end of the previous line.
+                // line because the buffer contains characters.). We then write a blank character,
+                // followed by a new-line, and then move the cursor back to the end of the previous line.
                 Console.SetCursorPosition(Console.BufferWidth - 1, Console.CursorTop - 1);
                 Console.WriteLine(' ');
                 Console.SetCursorPosition(Console.BufferWidth - 1, Console.CursorTop - 1);
@@ -172,7 +186,7 @@ internal class ChatHostedService : BackgroundService
 
             if (Console.CursorLeft == Console.BufferWidth - 1)
             {
-                // If the cursor is at the end position, then we want to move the cursor onto the next
+                // If the cursor is at the end position then we want to move the cursor onto the next
                 // line after writing the character.
                 Console.WriteLine(keyInfo.KeyChar);
             }
