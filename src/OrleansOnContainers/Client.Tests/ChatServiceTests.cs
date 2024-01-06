@@ -1,8 +1,6 @@
-﻿using Client.Options;
-using Client.Services;
+﻿using Client.Services;
 using GrainInterfaces;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 using Xunit;
 
@@ -225,20 +223,5 @@ public class ChatServiceTests
 
 public class ChatServiceTestsFixture
 {
-    public ChatServiceTestsFixture()
-    {
-        ClientOptions = MockOptions();
-    }
-
     public Guid ClientId { get; } = Guid.Parse("3b7a1546-a832-4b03-a0b1-f0a2c629a30f");
-
-    public IOptions<ClientOptions> ClientOptions { get; private set; }
-
-    private IOptions<ClientOptions> MockOptions()
-    {
-        var substitute = Substitute.For<IOptions<ClientOptions>>();
-        substitute.Value.Returns(new ClientOptions(ClientId));
-
-        return substitute;
-    }
 }

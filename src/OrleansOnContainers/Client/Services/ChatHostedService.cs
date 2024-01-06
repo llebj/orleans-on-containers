@@ -8,6 +8,8 @@ namespace Client.Services;
 
 internal class ChatHostedService : BackgroundService
 {
+    private readonly Guid _clientId = Guid.NewGuid();
+
     // TODO: This class is doing way too much: split out console functionality.
     private readonly StringBuilder _buffer = new();
     private readonly string _chatId = "test";
@@ -36,7 +38,7 @@ internal class ChatHostedService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Executing hosted service.");
-        var joinResult = await _chatService.Join(_chatId, _options.ClientId);
+        var joinResult = await _chatService.Join(_chatId, _clientId);
 
         if (!joinResult.IsSuccess)
         {
@@ -46,7 +48,7 @@ internal class ChatHostedService : BackgroundService
             return;
         }
 
-        SystemMessage.WriteLine($"Joined {_chatId} as {_options.ClientId}.");
+        SystemMessage.WriteLine($"Joined {_chatId} as {_clientId}.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -141,7 +143,7 @@ internal class ChatHostedService : BackgroundService
             _buffer.Clear();
         }
 
-        return await _chatService.SendMessage(_options.ClientId, message.Trim());
+        return await _chatService.SendMessage(_clientId, message.Trim());
     }
 
     private void RemoveCharacter()
