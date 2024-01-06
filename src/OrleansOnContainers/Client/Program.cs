@@ -24,7 +24,7 @@ var logger = new LoggerConfiguration()
 var builder = Host.CreateDefaultBuilder(args)
     .UseOrleansClient(client =>
     {
-        client.ConfigureStaticClustering(configuration);
+        client.ConfigureClustering(configuration);
 
         // A System.Text.Json serializer has to be used here as I was unable to get the orleans serialization to work.
         // I attempted to use the GenerateSerializerAttribute coupled with IdAttribute, however the code generator
