@@ -15,7 +15,7 @@ var configuration = new ConfigurationBuilder()
 var builder = Host.CreateDefaultBuilder(args)
     .UseOrleans(silo =>
     {
-        silo.ConfigureDevelopmentClustering(configuration);
+        silo.ConfigureClustering(configuration);
         silo.Services.AddJsonSerializerForAssembly(typeof(ChatMessage));
     })
     .ConfigureServices(serviceCollection =>
