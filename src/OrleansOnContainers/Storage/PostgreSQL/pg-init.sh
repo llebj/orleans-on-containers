@@ -20,16 +20,14 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" \
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$database" \
     --file=/scripts/PostgreSQL-Main.sql \
     --file=/scripts/PostgreSQL-Clustering.sql \
-    --file=/scripts/PostgreSQL-Persistence.sql \
-    --file=/scripts/PostgreSQL-Reminders.sql
+    --file=/scripts/PostgreSQL-Clustering-3.6.0.sql \
+    --file=/scripts/PostgreSQL-Clustering-3.7.0.sql
 
 # List all of the tables added by the above scripts.
 orleansTables=(
     "orleansmembershiptable"
     "orleansmembershipversiontable"
-    "orleansquery"
-    "orleansreminderstable"
-    "orleansstorage")
+    "orleansquery")
 
 # For each of the above tables, grant permissions to the specialised user. 
 for table in ${orleansTables[@]}; do
