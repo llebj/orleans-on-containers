@@ -2,7 +2,9 @@
 
 namespace Client.Services;
 
-// The methods on this interface probably want to return a Task<Result>
+// TODO: There is no reason that this interface needs to be bound to observers.
+//       It could be changed to be an ISubscriptionManager and still server the
+//       same purpose.
 public interface IGrainObserverManager
 {
     Task<Result> Subscribe(IChatObserver observer, string grainId);
