@@ -1,8 +1,8 @@
-name: orleans-on-containers
+name: ooc-dev
 
 services:
   client:
-    image: orleans-client
+    image: orleans-client:development
     build:
       args:
         - Configuration=Release
@@ -10,19 +10,23 @@ services:
       dockerfile: .\Client\Dockerfile
     depends_on:
       - silo
+    env_file:
+      - .\Client\.env.development
     environment:
-      - SiloEndpoints__0__HostName=silo
+      - Client__ClusteringProvider=development
     stdin_open: true
     tty: true
     deploy:
       replicas: 2
 
   silo:
-    image: orleans-silo
+    image: orleans-silo:development
     build:
       args:
         - Configuration=Release
       context: .
       dockerfile: .\Silo\Dockerfile
+    env_file:
+      - .\Silo\.env.development
     environment:
-      - PrimarySilo__HostName=silo
+      - Silo__ClusteringProvider=development

@@ -13,8 +13,8 @@ COPY ["Grains/Grains.csproj", "Grains/"]
 COPY ["Shared/Shared.csproj", "Shared/"]
 
 FROM setup AS postgresql
-ARG PackageVersion
-RUN dotnet add "Silo/Silo.csproj" package Npgsql --version ${PackageVersion}
+ARG AdoNetProviderPackageVersion
+RUN dotnet add "Silo/Silo.csproj" package Npgsql --version ${AdoNetProviderPackageVersion}
 
 FROM ${PreRestoreStage} AS restore
 RUN dotnet restore "Silo/Silo.csproj"
