@@ -1,0 +1,60 @@
+name: ooc-adonet
+
+services:
+  client:
+    image: orleans-client:postgres
+    build:
+      context: .
+      dockerfile: .\Client\Dockerfile
+      args:
+        - Configuration=Release
+        - PreRestoreStage=postgres
+        - AdoNetProviderPackageVersion=${NpgsqlVersion}
+    environment:
+      - Client__ClusteringProvider=adonet
+      - AdoNetProvider__Invariant=Npgsql
+      - AdoNetProvider__ConnectionString=${ConnectionString}
+    depends_on:
+      silo:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+        restart: true
+    stdin_open: true
+    tty: true
+    deploy:
+      replicas: 2
+
+  silo:
+    image: orleans-silo:postgres
+    build:
+      context: .
+      dockerfile: .\Silo\Dockerfile
+      args:
+        - Configuration=Release
+        - PreRestoreStage=postgres
+        - AdoNetProviderPackageVersion=${NpgsqlVersion}
+    environment:
+      - Silo__ClusteringProvider=adonet
+      - AdoNetProvider__Invariant=Npgsql
+      - AdoNetProvider__ConnectionString=${ConnectionString}
+    depends_on:
+      postgres:
+        condition: service_healthy
+        restart: true
+  
+  postgres:
+    image: orleans-postgres
+    build:
+      context: .\Storage\PostgreSQL
+      dockerfile: .\Dockerfile
+      args:
+        - PostgresVersion=${PostgresVersion}
+    environment:
+      - POSTGRES_PASSWORD=${PostgresPassword}
+    user: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d orleans_on_containers || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

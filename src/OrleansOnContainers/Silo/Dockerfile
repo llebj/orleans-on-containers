@@ -12,7 +12,7 @@ COPY ["GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
 COPY ["Grains/Grains.csproj", "Grains/"]
 COPY ["Shared/Shared.csproj", "Shared/"]
 
-FROM setup AS postgresql
+FROM setup AS postgres
 ARG AdoNetProviderPackageVersion
 RUN dotnet add "Silo/Silo.csproj" package Npgsql --version ${AdoNetProviderPackageVersion}
 

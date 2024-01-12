@@ -4,16 +4,16 @@ services:
   client:
     image: orleans-client:development
     build:
-      args:
-        - Configuration=Release
       context: .
       dockerfile: .\Client\Dockerfile
-    depends_on:
-      - silo
+      args:
+        - Configuration=Release
     env_file:
       - .\Client\.env.development
     environment:
       - Client__ClusteringProvider=development
+    depends_on:
+      - silo
     stdin_open: true
     tty: true
     deploy:
@@ -22,10 +22,10 @@ services:
   silo:
     image: orleans-silo:development
     build:
-      args:
-        - Configuration=Release
       context: .
       dockerfile: .\Silo\Dockerfile
+      args:
+        - Configuration=Release
     env_file:
       - .\Silo\.env.development
     environment:
