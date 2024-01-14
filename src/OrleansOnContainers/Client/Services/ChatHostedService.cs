@@ -10,7 +10,8 @@ internal class ChatHostedService : BackgroundService
 {
     private readonly Guid _clientId = Guid.NewGuid();
 
-    // TODO: This class is doing way too much: split out console functionality.
+    // TODO: This class is doing way too much: split out the message building functionality.
+    //       The locking can then all be handled in one place.
     private readonly StringBuilder _buffer = new();
     private readonly string _chatId = "test";
     private readonly object _inputLock = new();
