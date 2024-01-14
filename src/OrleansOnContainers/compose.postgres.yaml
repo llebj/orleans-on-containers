@@ -51,10 +51,16 @@ services:
       args:
         - PostgresVersion=${PostgresVersion}
     environment:
-      - POSTGRES_PASSWORD=${PostgresPassword}
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      - postgres_password
     user: postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -d orleans_on_containers || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
+
+secrets:
+  postgres_password:
+    file: ..\..\secrets\postgres_password.txt
