@@ -8,10 +8,10 @@ services:
       dockerfile: .\Client\Dockerfile
       args:
         - Configuration=Release
-    env_file:
-      - .\Client\.env.development
     environment:
       - Client__ClusteringProvider=development
+      - SiloEndpoints__0__HostName=silo
+      - SiloEndpoints__0__Port=30000
     depends_on:
       - silo
     stdin_open: true
@@ -26,7 +26,7 @@ services:
       dockerfile: .\Silo\Dockerfile
       args:
         - Configuration=Release
-    env_file:
-      - .\Silo\.env.development
     environment:
       - Silo__ClusteringProvider=development
+      - PrimarySilo__HostName=silo
+      - PrimarySilo__Port=11111
