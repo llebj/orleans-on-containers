@@ -183,40 +183,6 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         Assert.False(string.IsNullOrEmpty(result.Message));
     }
 
-    [Fact(Skip = "No longer relevant (functionality abstracted).")]
-    public async Task GivenAnActiveSubscription_WhenTheRefreshPeriodExpires_ThenResubscibeToTheGrain()
-    {
-        // Arrange
-        var grainId = "test";
-        var clusterClient = Substitute.For<IClusterClient>();
-        var grain = Substitute.For<IChatGrain>();
-        clusterClient
-            .GetGrain<IChatGrain>(grainId)
-            .Returns(grain);
-        var observer = Substitute.For<IChatObserver>();
-        var observerReference = Substitute.For<IChatObserver>();
-        var grainFactory = Substitute.For<IGrainFactory>();
-        grainFactory
-            .CreateObjectReference<IChatObserver>(observer)
-            .Returns(observerReference);
-        var timeProvider = new FakeTimeProvider(DateTimeOffset.UtcNow);
-        var manager = new GrainObserverManager(
-            observer,
-            clusterClient,
-            grainFactory,
-            new NullLogger<GrainObserverManager>(),
-            Substitute.For<IResubscriber<GrainSubscription>>());
-        await manager.Subscribe(grainId);
-
-        // Act
-        timeProvider.Advance(TimeSpan.FromSeconds(_fixture.RefreshPeriod));
-
-        // Assert
-        await grain
-            .Received(2)
-            .Subscribe(observerReference);
-    }
-
     [Fact]
     public async Task GivenAnActiveSubscription_WhenAClientUnsubscribes_ThenUnsubscribeFromTheGrain()
     {
@@ -310,44 +276,6 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
 
         // Assert
         Assert.True(result.IsSuccess);
-    }
-
-    [Fact(Skip = "No longer relevant (functionality abstracted).")]
-    public async Task GivenAnActiveSubscriptionThatResubscribes_WhenAClientUnsubscribes_ThenStopResubscribingToTheGrain()
-    {
-        // Arrange
-        var grainId = "test";
-        var clusterClient = Substitute.For<IClusterClient>();
-        var grain = Substitute.For<IChatGrain>();
-        clusterClient
-            .GetGrain<IChatGrain>(grainId)
-            .Returns(grain);
-        var observer = Substitute.For<IChatObserver>();
-        var observerReference = Substitute.For<IChatObserver>();
-        var grainFactory = Substitute.For<IGrainFactory>();
-        grainFactory
-            .CreateObjectReference<IChatObserver>(observer)
-            .Returns(observerReference);
-        var timeProvider = new FakeTimeProvider(DateTimeOffset.UtcNow);
-        var manager = new GrainObserverManager(
-            observer,
-            clusterClient,
-            grainFactory,
-            new NullLogger<GrainObserverManager>(),
-            Substitute.For<IResubscriber<GrainSubscription>>());
-        await manager.Subscribe(grainId);
-        timeProvider.Advance(TimeSpan.FromSeconds(_fixture.RefreshPeriod));
-
-        // Act
-        await manager.Unsubscribe(grainId);
-        // Advance the time provider again to ensure that if the client had not unsubscribed
-        // then more calls to resubscribe would have been made in addition to the initial one.
-        timeProvider.Advance(TimeSpan.FromSeconds(2 * _fixture.RefreshPeriod));
-
-        // Assert
-        await grain
-            .Received(2)
-            .Subscribe(observerReference);
     }
 
     [Fact]
