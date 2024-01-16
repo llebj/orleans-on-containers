@@ -9,6 +9,7 @@ using Xunit;
 
 namespace Client.Tests;
 
+// #1_mil_subs
 public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTestsFixture>
 {
     private readonly GrainObserverManagerTestsFixture _fixture;
@@ -35,13 +36,14 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .CreateObjectReference<IChatObserver>(observer)
             .Returns(observerReference);
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             grainFactory,
             new NullLogger<GrainObserverManager>(),
             Substitute.For<IResubscriber<GrainSubscription>>());
 
         // Act
-        await manager.Subscribe(observer, grainId);
+        await manager.Subscribe(grainId);
 
         // Assert
         await grain.Received().Subscribe(observerReference);
@@ -65,13 +67,14 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .Returns(observerReference);
         var resubscriber = Substitute.For<IResubscriber<GrainSubscription>>();
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             grainFactory,
             new NullLogger<GrainObserverManager>(),
             resubscriber);
 
         // Act
-        await manager.Subscribe(observer, grainId);
+        await manager.Subscribe(grainId);
 
         // Assert
         await resubscriber
@@ -98,13 +101,14 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .CreateObjectReference<IChatObserver>(observer)
             .Returns(observerReference);
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             grainFactory,
             new NullLogger<GrainObserverManager>(),
             Substitute.For<IResubscriber<GrainSubscription>>());
 
         // Act
-        var result = await manager.Subscribe(observer, grainId);
+        var result = await manager.Subscribe(grainId);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -133,6 +137,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .CreateObjectReference<IChatObserver>(observer)
             .Returns(observerReference);
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             grainFactory,
             new NullLogger<GrainObserverManager>(),
@@ -142,11 +147,11 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         // Catch and ignore the configured exception throw on the first call to subscribe.
         try
         {
-            await manager.Subscribe(observer, grainId);
+            await manager.Subscribe(grainId);
         }
         catch { }
 
-        var result = await manager.Subscribe(observer, grainId);
+        var result = await manager.Subscribe(grainId);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -163,14 +168,15 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             Substitute.For<IGrainFactory>(),
             new NullLogger<GrainObserverManager>(),
             Substitute.For<IResubscriber<GrainSubscription>>());
-        await manager.Subscribe(observer, "test");
+        await manager.Subscribe("test");
 
         // Act
-        var result = await manager.Subscribe(observer, "test-2");
+        var result = await manager.Subscribe("test-2");
 
         // Assert
         Assert.False(result.IsSuccess);
@@ -195,11 +201,12 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .Returns(observerReference);
         var timeProvider = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             grainFactory,
             new NullLogger<GrainObserverManager>(),
             Substitute.For<IResubscriber<GrainSubscription>>());
-        await manager.Subscribe(observer, grainId);
+        await manager.Subscribe(grainId);
 
         // Act
         timeProvider.Advance(TimeSpan.FromSeconds(_fixture.RefreshPeriod));
@@ -227,14 +234,15 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .CreateObjectReference<IChatObserver>(observer)
             .Returns(observerReference);
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             grainFactory,
             new NullLogger<GrainObserverManager>(),
             Substitute.For<IResubscriber<GrainSubscription>>());
-        await manager.Subscribe(observer, grainId);
+        await manager.Subscribe(grainId);
 
         // Act
-        await manager.Unsubscribe(observer, grainId);
+        await manager.Unsubscribe(grainId);
 
         // Assert
         await grain.Received().Unsubscribe(observerReference);
@@ -258,14 +266,15 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .Returns(observerReference);
         var resubscriber = Substitute.For<IResubscriber<GrainSubscription>>();
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             grainFactory,
             new NullLogger<GrainObserverManager>(),
             resubscriber);
-        await manager.Subscribe(observer, grainId);
+        await manager.Subscribe(grainId);
 
         // Act
-        await manager.Unsubscribe(observer, grainId);
+        await manager.Unsubscribe(grainId);
 
         // Assert
         await resubscriber.Received().Clear();
@@ -289,14 +298,15 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .Returns(observerReference);
         var resubscriber = Substitute.For<IResubscriber<GrainSubscription>>();
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             grainFactory,
             new NullLogger<GrainObserverManager>(),
             resubscriber);
-        await manager.Subscribe(observer, grainId);
+        await manager.Subscribe( grainId);
 
         // Act
-        var result = await manager.Unsubscribe(observer, grainId);
+        var result = await manager.Unsubscribe(grainId);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -320,15 +330,16 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .Returns(observerReference);
         var timeProvider = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             grainFactory,
             new NullLogger<GrainObserverManager>(),
             Substitute.For<IResubscriber<GrainSubscription>>());
-        await manager.Subscribe(observer, grainId);
+        await manager.Subscribe(grainId);
         timeProvider.Advance(TimeSpan.FromSeconds(_fixture.RefreshPeriod));
 
         // Act
-        await manager.Unsubscribe(observer, grainId);
+        await manager.Unsubscribe(grainId);
         // Advance the time provider again to ensure that if the client had not unsubscribed
         // then more calls to resubscribe would have been made in addition to the initial one.
         timeProvider.Advance(TimeSpan.FromSeconds(2 * _fixture.RefreshPeriod));
@@ -356,15 +367,16 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .CreateObjectReference<IChatObserver>(observer)
             .Returns(observerReference);
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             grainFactory,
             new NullLogger<GrainObserverManager>(),
             Substitute.For<IResubscriber<GrainSubscription>>());
-        await manager.Subscribe(observer, grainId);
-        await manager.Unsubscribe(observer, grainId);
+        await manager.Subscribe(grainId);
+        await manager.Unsubscribe(grainId);
 
         // Act
-        var result = await manager.Subscribe(observer, grainId);
+        var result = await manager.Subscribe(grainId);
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -382,13 +394,14 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var manager = new GrainObserverManager(
+            observer,
             clusterClient,
             Substitute.For<IGrainFactory>(),
             new NullLogger<GrainObserverManager>(),
             Substitute.For<IResubscriber<GrainSubscription>>());
 
         // Act
-        var result = await manager.Unsubscribe(observer, grainId);
+        var result = await manager.Unsubscribe(grainId);
 
         // Assert
         Assert.False(result.IsSuccess);

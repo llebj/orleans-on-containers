@@ -3,27 +3,31 @@ using Microsoft.Extensions.Logging;
 
 namespace Client.Services;
 
-public class GrainObserverManager : IGrainObserverManager
+public class GrainObserverManager : ISubscriptionManager
 {
+    private readonly IChatObserver _chatObserver;
     private readonly IClusterClient _clusterClient;
     private readonly IGrainFactory _grainFactory;
     private readonly ILogger<GrainObserverManager> _logger;
     private readonly IResubscriber<GrainSubscription> _resubscriber;
     private GrainObserverManagerState _state = new();
 
+    // This class has a lot of dependencies...
     public GrainObserverManager(
+        IChatObserver chatObserver,
         IClusterClient clusterClient,
         IGrainFactory grainFactory,
         ILogger<GrainObserverManager> logger,
         IResubscriber<GrainSubscription> resubscriber)
     {
+        _chatObserver = chatObserver;
         _clusterClient = clusterClient;
         _grainFactory = grainFactory;
         _logger = logger;
         _resubscriber = resubscriber;
     }
 
-    public async Task<Result> Subscribe(IChatObserver observer, string grainId)
+    public async Task<Result> Subscribe(string grainId)
     {
         _logger.LogDebug("Attempting to subscribe to {Grain}.", grainId);
 
@@ -35,7 +39,7 @@ public class GrainObserverManager : IGrainObserverManager
             return Result.Failure(message);
         }
 
-        _state.Set(grainId, _grainFactory.CreateObjectReference<IChatObserver>(observer));
+        _state.Set(grainId, _grainFactory.CreateObjectReference<IChatObserver>(_chatObserver));
 
         try
         {
@@ -55,7 +59,7 @@ public class GrainObserverManager : IGrainObserverManager
         return Result.Success();
     }
 
-    public async Task<Result> Unsubscribe(IChatObserver observer, string grainId)
+    public async Task<Result> Unsubscribe(string grainId)
     {
         _logger.LogDebug("Attempting to subscribe to {Grain}.", grainId);
 

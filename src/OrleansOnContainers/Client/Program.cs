@@ -39,7 +39,7 @@ var builder = Host.CreateDefaultBuilder(args)
         serviceCollection.Configure<ObserverManagerOptions>(configuration.GetSection(ObserverManagerOptions.Key));
         serviceCollection.AddScoped<IChatObserver, ChatObserver>();
         serviceCollection.AddScoped<IChatService, ChatService>();
-        serviceCollection.AddScoped<IGrainObserverManager, GrainObserverManager>();
+        serviceCollection.AddScoped<ISubscriptionManager, GrainObserverManager>();
         serviceCollection.AddScoped<IMessageStream, MessageStream>();
         serviceCollection.AddScoped<IResubscriber<GrainSubscription>, ResubscriptionTimer<GrainSubscription>>();
         serviceCollection.AddSingleton(TimeProvider.System);
