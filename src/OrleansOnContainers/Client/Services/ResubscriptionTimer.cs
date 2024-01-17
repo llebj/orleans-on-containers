@@ -23,8 +23,6 @@ public class ResubscriptionTimer<T> : IResubscriber<T>
 
     private CancellationTokenSource? _cancellationTokenSource;
     private PeriodicTimer? _timer;
-    private T? _state;
-    private Func<T, Task>? _timerDelegate;
 
     public ResubscriptionTimer(
         ILogger<ResubscriptionTimer<T>> logger,
@@ -36,23 +34,17 @@ public class ResubscriptionTimer<T> : IResubscriber<T>
         _timerProvider = timerProvider;
     }
 
-    private bool IsStarted => 
-        _cancellationTokenSource != null ||
-        _timer != null ||
-        _state != null ||
-        _timerDelegate != null;
+    private bool IsStarted => _timer is not null;
 
     public Task Clear()
     {
         _logger.LogDebug("Stopping resubscription timer.");
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
-        _timer?.Dispose();
-
         _cancellationTokenSource = null;
+
+        _timer?.Dispose();
         _timer = null;
-        _state = default;
-        _timerDelegate = null;
 
         return Task.CompletedTask;
     }
@@ -68,32 +60,30 @@ public class ResubscriptionTimer<T> : IResubscriber<T>
             _logger.LogDebug("Restarting resubscription timer.");
         }
 
-        _state = state;
-        _timerDelegate = timerDelegate;
         _cancellationTokenSource = new CancellationTokenSource();
         _timer = new PeriodicTimer(
             TimeSpan.FromSeconds(_options.RefreshPeriod), 
             _timerProvider);
 
-        _ = Run(_cancellationTokenSource.Token);
+        _ = Run(state, timerDelegate, _cancellationTokenSource.Token);
 
         return Task.CompletedTask;
     }
 
-    private async Task Run(CancellationToken cancellationToken)
+    private async Task Run(T state, Func<T, Task> timerDelegate, CancellationToken cancellationToken)
     {
         try
         {
             while (await _timer!.WaitForNextTickAsync(cancellationToken))
             {
-                await _timerDelegate!(_state!);
+                await timerDelegate(state);
                 _logger.LogDebug("Executed timer delegate.");
             }
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to execute for timer delegate.");
+            _logger.LogError(ex, "Failed to execute timer delegate.");
         }
     }
 }
