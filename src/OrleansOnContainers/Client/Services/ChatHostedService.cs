@@ -66,23 +66,19 @@ internal class ChatHostedService : BackgroundService
                 
                 continue;
             }
-            else if (SupportedKeys.Alphanumeric.Contains(keyInfo.Key))
+            else if (keyInfo.Key == ConsoleKey.Enter)
             {
-                WriteCharacter(keyInfo);
+                var messageResult = await SendMessage();
+
+                if (!messageResult.IsSuccess)
+                {
+                    SystemMessage.WriteLine(messageResult.Message);
+                }
 
                 continue;
             }
-            else if (keyInfo.Key != ConsoleKey.Enter)
-            {
-                continue;
-            }
 
-            var messageResult = await SendMessage();
-
-            if (!messageResult.IsSuccess)
-            {
-                SystemMessage.WriteLine(messageResult.Message);
-            }
+            WriteCharacter(keyInfo);
         }
 
         SystemMessage.WriteLine($"Leaving {_chatId}.");
@@ -113,13 +109,14 @@ internal class ChatHostedService : BackgroundService
             return;
         }
 
-        // If this method has been called recursively then the cursor will be positioned
-        // on top of the final character in the line. In this case there will be 
-        // [cursorPosition + 1] characters in the current line, as opposed to [cursorPosition] characters.
-        var clearCount = Console.CursorLeft == Console.BufferWidth - 1 ? 
-            Console.CursorLeft + 1 :
+        var isLeftMost = Console.CursorLeft == 0;
+        var clearCount = isLeftMost ?
+            Console.BufferWidth :
             Console.CursorLeft;
-        Console.SetCursorPosition(0, Console.CursorTop);
+
+        // If this method has been called recursively then the cursor will be positioned
+        // at the left-most position and it is the previous line that needs to be cleared.
+        Console.SetCursorPosition(0, isLeftMost ? Console.CursorTop - 1 : Console.CursorTop);
         Console.Write(new string(' ', clearCount));
         Console.SetCursorPosition(0, Console.CursorTop);
 
@@ -128,8 +125,6 @@ internal class ChatHostedService : BackgroundService
             return;
         }
 
-        // We need to continue clearing lines until there are no characters remaining.
-        Console.SetCursorPosition(Console.BufferWidth - 1, Console.CursorTop - 1);
         ClearCharacters(charactarsRemaining - clearCount);
     }
 
@@ -153,7 +148,6 @@ internal class ChatHostedService : BackgroundService
         {
             if (_buffer.Length == 0)
             {
-                // If the buffer is empty then there are no characters to remove so we can return.
                 return;
             }
 
@@ -161,19 +155,14 @@ internal class ChatHostedService : BackgroundService
 
             if (Console.CursorLeft == 0)
             {
-                // If the cursor is at the left-most position then we know that the next character
-                // to remove must be on the previous line, so we first move the cursor to the end
-                // position on the previous line (we know that there are characters on the previous
-                // line because the buffer contains characters.). We then write a blank character,
-                // followed by a new-line, and then move the cursor back to the end of the previous line.
+                // We are at the left-most position, so remove the character at the end of the
+                // previous line.
                 Console.SetCursorPosition(Console.BufferWidth - 1, Console.CursorTop - 1);
                 Console.WriteLine(' ');
                 Console.SetCursorPosition(Console.BufferWidth - 1, Console.CursorTop - 1);
             }
             else
             {
-                // If the cursor is not at the left-most position then we can simply replace the
-                // previous chracter with a whitespace character and then move the cursor back one place.
                 Console.SetCursorPosition(Console.CursorLeft - 1, Console.CursorTop);
                 Console.Write(' ');
                 Console.SetCursorPosition(Console.CursorLeft - 1, Console.CursorTop);
@@ -183,14 +172,21 @@ internal class ChatHostedService : BackgroundService
 
     private void WriteCharacter(ConsoleKeyInfo keyInfo)
     {
+        // Keys such as arrow keys or function keys are represented by a '\0' character which is not
+        // represented in the console. These null characters break the clear characters functionality
+        // as they result in the number of characters in the console and the buffer being different.
+        if (keyInfo.KeyChar == '\0') 
+        {
+            return;
+        }
+
         lock (_inputLock)
         {
             _buffer.Append(keyInfo.KeyChar);
 
             if (Console.CursorLeft == Console.BufferWidth - 1)
             {
-                // If the cursor is at the end position then we want to move the cursor onto the next
-                // line after writing the character.
+                // We are at the end of a line, so move to the next line after writing.
                 Console.WriteLine(keyInfo.KeyChar);
             }
             else
@@ -199,53 +195,4 @@ internal class ChatHostedService : BackgroundService
             }
         }
     }
-}
-
-internal static class SupportedKeys
-{
-    private readonly static HashSet<ConsoleKey> _alphabet = [
-            ConsoleKey.A,
-            ConsoleKey.B,
-            ConsoleKey.C,
-            ConsoleKey.D,
-            ConsoleKey.E,
-            ConsoleKey.F,
-            ConsoleKey.G,
-            ConsoleKey.H,
-            ConsoleKey.I,
-            ConsoleKey.J,
-            ConsoleKey.K,
-            ConsoleKey.L,
-            ConsoleKey.M,
-            ConsoleKey.N,
-            ConsoleKey.O,
-            ConsoleKey.P,
-            ConsoleKey.Q,
-            ConsoleKey.R,
-            ConsoleKey.S,
-            ConsoleKey.T,
-            ConsoleKey.U,
-            ConsoleKey.V,
-            ConsoleKey.W,
-            ConsoleKey.X,
-            ConsoleKey.Y,
-            ConsoleKey.Z
-        ];
-
-    private readonly static HashSet<ConsoleKey> _numbers = [
-            ConsoleKey.D0,
-            ConsoleKey.D1,
-            ConsoleKey.D2,
-            ConsoleKey.D3,
-            ConsoleKey.D4,
-            ConsoleKey.D5,
-            ConsoleKey.D6,
-            ConsoleKey.D7,
-            ConsoleKey.D8,
-            ConsoleKey.D9
-        ];
-
-    private readonly static HashSet<ConsoleKey> _alphanumeric = _alphabet.Union(_numbers).ToHashSet();
-
-    public static HashSet<ConsoleKey> Alphanumeric => _alphanumeric;
 }
