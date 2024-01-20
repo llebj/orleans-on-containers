@@ -1,7 +1,6 @@
-﻿using Client.Options;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using Shared;
 using System.Text;
 
 namespace Client.Services;
@@ -9,31 +8,24 @@ namespace Client.Services;
 internal class ChatHostedService : BackgroundService
 {
     private readonly Guid _clientId = Guid.NewGuid();
-
-    // TODO: This class is doing way too much: split out the message building functionality.
-    //       The locking can then all be handled in one place.
-    private readonly StringBuilder _buffer = new();
     private readonly string _chatId = "test";
-    private readonly object _inputLock = new();
+    private readonly InputHandler _inputHandler = new();
 
     private readonly IChatService _chatService;
     private readonly IHostApplicationLifetime _lifetime;
     private readonly ILogger<ChatHostedService> _logger;
     private readonly IMessageStream _messageStream;
-    private readonly ClientOptions _options;
 
     public ChatHostedService(
         IChatService chatService,
         IHostApplicationLifetime lifetime,
         ILogger<ChatHostedService> logger,
-        IMessageStream messageStream,
-        IOptions<ClientOptions> options)
+        IMessageStream messageStream)
     {
         _chatService = chatService;
         _lifetime = lifetime;
         _logger = logger;
         _messageStream = messageStream;
-        _options = options.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -62,23 +54,18 @@ internal class ChatHostedService : BackgroundService
             }
             else if (keyInfo.Key == ConsoleKey.Backspace)
             {
-                RemoveCharacter();
+                _inputHandler.RemoveCharacter();
                 
                 continue;
             }
             else if (keyInfo.Key == ConsoleKey.Enter)
             {
-                var messageResult = await SendMessage();
-
-                if (!messageResult.IsSuccess)
-                {
-                    SystemMessage.WriteLine(messageResult.Message);
-                }
+                await SendMessage();                
 
                 continue;
             }
 
-            WriteCharacter(keyInfo);
+            _inputHandler.AddCharacter(keyInfo.KeyChar);
         }
 
         SystemMessage.WriteLine($"Leaving {_chatId}.");
@@ -88,70 +75,80 @@ internal class ChatHostedService : BackgroundService
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        _ =_messageStream.Messages.Subscribe(message =>
-        {
-            lock (_inputLock)
-            {
-                ClearCharacters(_buffer.Length);
-                Console.WriteLine(message);
-                Console.Write(_buffer.ToString());
-            }
-        });
+        _ =_messageStream.Messages.Subscribe(_inputHandler.Write);
 
         await base.StartAsync(cancellationToken);
     }
 
-    // Beware! Adding the ability to move the cursor left and right will break this method!
-    private static void ClearCharacters(int charactarsRemaining)
+    private async Task SendMessage()
     {
-        if (charactarsRemaining == 0)
+        var message = _inputHandler.Read();
+        var sendResult = await _chatService.SendMessage(_clientId, message.Trim());
+
+        if (!sendResult.IsSuccess)
+        {
+            SystemMessage.WriteLine(sendResult.Message);
+        }
+    }
+}
+
+internal class InputHandler
+{
+    private readonly MessageBuilder _messageBuilder = new();
+    // The lock is used to control access to both the console and the message builder, ensuring
+    // that incoming messages via Write are not interpolated into any message that is currently
+    // being built using AddCharacter, RemoveCharacter, or Read.
+    private readonly object _inputLock = new();
+
+    public void AddCharacter(char character)
+    {
+        // Keys such as arrow keys or function keys are represented by a '\0' character which is not
+        // represented in the console. These null characters break the clear characters functionality
+        // as they result in the number of characters in the console and the message builder being different.
+        if (character == '\0')
         {
             return;
         }
 
-        var isLeftMost = Console.CursorLeft == 0;
-        var clearCount = isLeftMost ?
-            Console.BufferWidth :
-            Console.CursorLeft;
-
-        // If this method has been called recursively then the cursor will be positioned
-        // at the left-most position and it is the previous line that needs to be cleared.
-        Console.SetCursorPosition(0, isLeftMost ? Console.CursorTop - 1 : Console.CursorTop);
-        Console.Write(new string(' ', clearCount));
-        Console.SetCursorPosition(0, Console.CursorTop);
-
-        if (clearCount == charactarsRemaining)
+        lock (_inputLock)
         {
-            return;
-        }
+            _messageBuilder.AddCharacter(character);
 
-        ClearCharacters(charactarsRemaining - clearCount);
+            if (Console.CursorLeft == Console.BufferWidth - 1)
+            {
+                // We are at the end of a line, so move to the next line after writing.
+                Console.WriteLine(character);
+            }
+            else
+            {
+                Console.Write(character);
+            }
+        }
     }
 
-    private async Task<Result> SendMessage()
+    public string Read()
     {
         var message = string.Empty;
 
         lock (_inputLock)
         {
-            message = _buffer.ToString();
-            ClearCharacters(_buffer.Length);
-            _buffer.Clear();
+            ClearCharacters(_messageBuilder.Length);
+            message = _messageBuilder.Flush();
         }
 
-        return await _chatService.SendMessage(_clientId, message.Trim());
+        return message;
     }
 
-    private void RemoveCharacter()
+    public void RemoveCharacter()
     {
         lock (_inputLock)
         {
-            if (_buffer.Length == 0)
+            if (_messageBuilder.Length == 0)
             {
                 return;
             }
 
-            _buffer.Remove(_buffer.Length - 1, 1);
+            _messageBuilder.RemoveCharacter();
 
             if (Console.CursorLeft == 0)
             {
@@ -170,29 +167,61 @@ internal class ChatHostedService : BackgroundService
         }
     }
 
-    private void WriteCharacter(ConsoleKeyInfo keyInfo)
+    public void Write(ChatMessage message)
     {
-        // Keys such as arrow keys or function keys are represented by a '\0' character which is not
-        // represented in the console. These null characters break the clear characters functionality
-        // as they result in the number of characters in the console and the buffer being different.
-        if (keyInfo.KeyChar == '\0') 
+        lock (_inputLock)
+        {
+            ClearCharacters(_messageBuilder.Length);
+            Console.WriteLine(message);
+            Console.Write(_messageBuilder.Message);
+        }
+    }
+
+    // Adding the ability to move the cursor left and right will break this method.
+    private static void ClearCharacters(int charactersRemaining)
+    {
+        if (charactersRemaining == 0)
         {
             return;
         }
 
-        lock (_inputLock)
-        {
-            _buffer.Append(keyInfo.KeyChar);
+        var isLeftMost = Console.CursorLeft == 0;
+        var clearCount = isLeftMost ?
+            Console.BufferWidth :
+            Console.CursorLeft;
 
-            if (Console.CursorLeft == Console.BufferWidth - 1)
-            {
-                // We are at the end of a line, so move to the next line after writing.
-                Console.WriteLine(keyInfo.KeyChar);
-            }
-            else
-            {
-                Console.Write(keyInfo.KeyChar);
-            }
+        // If this method has been called recursively then the cursor will be positioned
+        // at the left-most position and it is the previous line that needs to be cleared.
+        Console.SetCursorPosition(0, isLeftMost ? Console.CursorTop - 1 : Console.CursorTop);
+        Console.Write(new string(' ', clearCount));
+        Console.SetCursorPosition(0, Console.CursorTop);
+
+        if (clearCount == charactersRemaining)
+        {
+            return;
         }
+
+        ClearCharacters(charactersRemaining - clearCount);
+    }
+
+    private class MessageBuilder
+    {
+        private readonly StringBuilder _buffer = new();
+
+        public int Length => _buffer.Length;
+
+        public string Message => _buffer.ToString();
+
+        public void AddCharacter(char character) => _buffer.Append(character);
+
+        public string Flush()
+        {
+            var message = _buffer.ToString();
+            _buffer.Clear();
+
+            return message;
+        }
+
+        public void RemoveCharacter() => _buffer.Remove(_buffer.Length - 1, 1);
     }
 }
