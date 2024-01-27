@@ -3,9 +3,10 @@ name: ooc-dev
 services:
   client:
     image: orleans-client:development
+    pull_policy: build
     build:
       context: .
-      dockerfile: .\Client\Dockerfile
+      dockerfile: ./Client/Dockerfile
       args:
         - Configuration=Release
     environment:
@@ -21,9 +22,10 @@ services:
 
   silo:
     image: orleans-silo:development
+    pull_policy: build
     build:
       context: .
-      dockerfile: .\Silo\Dockerfile
+      dockerfile: ./Silo/Dockerfile
       args:
         - Configuration=Release
     environment:
