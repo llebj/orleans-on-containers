@@ -3,9 +3,10 @@ name: ooc-adonet
 services:
   client:
     image: orleans-client:postgres
+    pull_policy: build
     build:
       context: .
-      dockerfile: .\Client\Dockerfile
+      dockerfile: ./Client/Dockerfile
       args:
         - Configuration=Release
         - PreRestoreStage=postgres
@@ -27,9 +28,10 @@ services:
 
   silo:
     image: orleans-silo:postgres
+    pull_policy: build
     build:
       context: .
-      dockerfile: .\Silo\Dockerfile
+      dockerfile: ./Silo/Dockerfile
       args:
         - Configuration=Release
         - PreRestoreStage=postgres
@@ -45,9 +47,10 @@ services:
   
   postgres:
     image: orleans-postgres
+    pull_policy: build
     build:
-      context: .\Storage\PostgreSQL
-      dockerfile: .\Dockerfile
+      context: ./Storage/PostgreSQL
+      dockerfile: ./Dockerfile
       args:
         - PostgresVersion=${PostgresVersion}
     environment:
@@ -63,4 +66,4 @@ services:
 
 secrets:
   postgres_password:
-    file: ..\..\secrets\postgres_password.txt
+    file: ../../secrets/postgres_password.txt
