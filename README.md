@@ -11,11 +11,11 @@ As stated earlier, the aim of this project is to explore the clustering features
 
 A Docker compose file exists for each clustering provider. Any required configuration for running orleans-on-containers with each provider will be documented below.
 
-## User Guide
+## Deployment
 The simplest way to run orleans-on-containers is to use the existing Docker compose files. Instructions for running orleans-on-containers are broken down by clustering provider.
 
 ### Development Clustering
-Coming soon...
+An instance of orleans-on-containers configured to use development clustering can be deployed by running `docker compose up -d` from the `src/OrleansOnContainers` directory. The `docker attach` command can then be used to attach to a Client instance to interact with the application.
 
 ### ADO.NET Clustering (PostgreSQL)
 Coming soon...
