@@ -37,4 +37,12 @@ The following environment variables are also required:
 To deploy orleans-on-containers with ADO.NET clustering, use `docker compose -f compose.postgres.yaml up -d` while also specifying the above mentioned environment variables directly with the `-e` option, or by using a `.env` file and the `--env-file` option. Both the `client` and `silo` services depend on the `postgres` service being healthy, so you should allow time for that condition to be met.
 
 # User Guide
-Coming soon...
+Upon starting, the client generates a GUID which it uses to join a chat called 'test'. This GUID identifies the client when sending messages.
+
+The client supports a basic feature set:
+
+- Messages are composed by typing into the console.
+- The client supports alphanumeric and special characters.
+- Characters can be removed by using the backspace key.
+- Pressing the Enter key will send a message.
+- Pressing Ctrl + q, or Esc will terminate the application.
