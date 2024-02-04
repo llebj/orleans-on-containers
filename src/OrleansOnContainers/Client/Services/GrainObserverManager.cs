@@ -5,6 +5,7 @@ namespace Client.Services;
 
 public class GrainObserverManager : ISubscriptionManager
 {
+    private const string _generalSubscriptionFailureMessage = "An error occurred during the subscription process.";
     private readonly IChatObserver _chatObserver;
     private readonly IClusterClient _clusterClient;
     private readonly IGrainFactory _grainFactory;
@@ -34,26 +35,31 @@ public class GrainObserverManager : ISubscriptionManager
         if (_state.IsSubscribed)
         {
             _logger.LogDebug("Failed to subscribe to {Grain}. Client is already subscribed to {Grain}.", grainId, _state.GrainId);
-            var message = "A subscription is already being managed. Unsubscribe first before registering a new subscription.";
 
-            return Result.Failure(message);
+            return Result.Failure("A subscription is already being managed. Unsubscribe first before registering a new subscription.");
         }
 
-        _state.Set(grainId, _grainFactory.CreateObjectReference<IChatObserver>(_chatObserver));
+        var stateSet = SetState(grainId);
 
-        try
+        if (!stateSet)
         {
-            await Subscribe(_state);
+            return Result.Failure(_generalSubscriptionFailureMessage);
         }
-        catch
+
+        var subscribed = await Subscribe();
+
+        if (!subscribed)
         {
-            _logger.LogWarning("Failed to subscribe to {Grain}.", grainId);
-            _state.Clear();
-
-            throw;
+            return Result.Failure(_generalSubscriptionFailureMessage);
         }
 
-        await _resubscriber.Register(_state, Subscribe);
+        var registeredResubscriber = await RegisterResubscriber();
+
+        if (!registeredResubscriber)
+        {
+            return Result.Failure(_generalSubscriptionFailureMessage);
+        }
+
         _logger.LogDebug("Successfully subscribed to {Grain}.", grainId);
 
         return Result.Success();
@@ -81,7 +87,56 @@ public class GrainObserverManager : ISubscriptionManager
         return Result.Success();
     }
 
-    private async Task Subscribe(GrainSubscription grainSubscription)
+    private async Task<bool> RegisterResubscriber()
+    {
+        try
+        {
+            await _resubscriber.Register(_state, SubscribeToGrain);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to register resubscription delegate for {Grain}.", _state.GrainId);
+        }
+
+        return false;
+    }
+
+    private bool SetState(string grainId)
+    {
+        try
+        {
+            _state.Set(grainId, _grainFactory.CreateObjectReference<IChatObserver>(_chatObserver));
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update state.");
+        }
+
+        return false;
+    }
+
+    private async Task<bool> Subscribe()
+    {
+        try
+        {
+            await SubscribeToGrain(_state);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to subscribe to {Grain}.", _state.GrainId);
+            _state.Clear();
+        }
+
+        return false;
+    }
+
+    private async Task SubscribeToGrain(GrainSubscription grainSubscription)
     {
         var grain = _clusterClient.GetGrain<IChatGrain>(grainSubscription.GrainId);
         await grain.Subscribe(grainSubscription.Reference!);

@@ -51,25 +51,6 @@ public class ChatServiceTests
         }
 
         [Fact]
-        public async Task WhenAClientRequestsToJoinAChatAndTheManagerThrowsAnException_ThenReturnAFailureResultWithAMessage()
-        {
-            // Arrange
-            var chat = "test";
-            var message = "error";
-            var clusterClient = Substitute.For<IClusterClient>();
-            var subscriptionManager = Substitute.For<ISubscriptionManager>();
-            subscriptionManager.Subscribe(chat).Returns<Task<Result>>(x => { throw new Exception(message); });
-            var service = new ChatService(clusterClient, subscriptionManager, new NullLogger<ChatService>());
-
-            // Act
-            var result = await service.Join(chat, _fixture.ClientId);
-
-            // Assert
-            Assert.False(result.IsSuccess);
-            Assert.False(string.IsNullOrEmpty(result.Message));
-        }
-
-        [Fact]
         public async Task WhenAClientRequestsToJoinAChatAndTheManagerReturnsAFailureResult_ThenReturnAFailureResultWithAMessage()
         {
             // Arrange

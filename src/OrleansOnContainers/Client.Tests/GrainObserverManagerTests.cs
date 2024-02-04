@@ -3,13 +3,13 @@ using Client.Services;
 using GrainInterfaces;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Xunit;
 
 namespace Client.Tests;
 
 // #1_mil_subs
+// TODO: Test setup in this class is nasty. Builder methods could be used to refine the process.
 public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTestsFixture>
 {
     private readonly GrainObserverManagerTestsFixture _fixture;
@@ -112,6 +112,105 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
 
         // Assert
         Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task GivenNoActivesubscription_WhenTheGrainFactoryThrows_ThenReturnAFailureResultWithAMessage()
+    {
+        // Arrange
+        var grainId = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        clusterClient
+            .GetGrain<IChatGrain>(grainId)
+            .Returns(grain);
+        var observer = Substitute.For<IChatObserver>();
+        var grainFactory = Substitute.For<IGrainFactory>();
+        grainFactory
+            .CreateObjectReference<IChatObserver>(observer)
+            .Returns(x => { throw new Exception(); });
+        var manager = new GrainObserverManager(
+            observer,
+            clusterClient,
+            grainFactory,
+            new NullLogger<GrainObserverManager>(),
+            Substitute.For<IResubscriber<GrainSubscription>>());
+
+        // Act
+        var result = await manager.Subscribe(grainId);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.False(string.IsNullOrEmpty(result.Message));
+    }
+
+    [Fact]
+    public async Task GivenNoActiveSubscription_WhenASubscriptionFails_ThenReturnAFailureResultWithAMessage()
+    {
+        // Arrange
+        var grainId = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        grain
+            .Subscribe(Arg.Any<IChatObserver>())
+            .Returns(x => { throw new Exception(); });
+        clusterClient
+            .GetGrain<IChatGrain>(grainId)
+            .Returns(grain);
+        var observer = Substitute.For<IChatObserver>();
+        var observerReference = Substitute.For<IChatObserver>();
+        var grainFactory = Substitute.For<IGrainFactory>();
+        grainFactory
+            .CreateObjectReference<IChatObserver>(observer)
+            .Returns(observerReference);
+        var manager = new GrainObserverManager(
+            observer,
+            clusterClient,
+            grainFactory,
+            new NullLogger<GrainObserverManager>(),
+            Substitute.For<IResubscriber<GrainSubscription>>());
+
+        // Act
+        var result = await manager.Subscribe(grainId);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.False(string.IsNullOrEmpty(result.Message));
+    }
+
+    [Fact]
+    public async Task GivenNoActiveSubscription_WhenResubscriptionRegistrationFails_ThenReturnAFailureResultWithAMessage()
+    {
+        // Arrange
+        var grainId = "test";
+        var clusterClient = Substitute.For<IClusterClient>();
+        var grain = Substitute.For<IChatGrain>();
+        clusterClient
+            .GetGrain<IChatGrain>(grainId)
+            .Returns(grain);
+        var observer = Substitute.For<IChatObserver>();
+        var observerReference = Substitute.For<IChatObserver>();
+        var grainFactory = Substitute.For<IGrainFactory>();
+        grainFactory
+            .CreateObjectReference<IChatObserver>(observer)
+            .Returns(observerReference);
+        var resubscriber = Substitute.For<IResubscriber<GrainSubscription>>();
+        resubscriber
+            .Register(new GrainSubscription(), x => Task.CompletedTask)
+            .ReturnsForAnyArgs(x => { throw new Exception(); });
+        var manager = new GrainObserverManager(
+            observer,
+            clusterClient,
+            grainFactory,
+            new NullLogger<GrainObserverManager>(),
+            resubscriber);
+
+        // Act
+        var result = await manager.Subscribe(grainId);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.False(string.IsNullOrEmpty(result.Message));
     }
 
     [Fact]

@@ -26,23 +26,13 @@ public class ChatService : IChatService
     public async Task<Result> Join(string chat, Guid clientId)
     {
         _logger.LogDebug("Attempting to join {Chat}.", chat);
+        var subscribeResult = await _grainObserverManager.Subscribe(chat);
 
-        try
+        if (!subscribeResult.IsSuccess)
         {
-            var subscribeResult = await _grainObserverManager.Subscribe(chat);
+            _logger.LogWarning("Failed to join {Chat}: {Message}", chat, subscribeResult.Message);
 
-            if (!subscribeResult.IsSuccess)
-            {
-                _logger.LogWarning("Failed to join {Chat}: {Message}", chat, subscribeResult.Message);
-
-                return Result.Failure($"Failed to join {chat}: {subscribeResult.Message}");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to join {Chat}.", chat);
-
-            return Result.Failure(ex.Message);
+            return Result.Failure($"Failed to join {chat}: {subscribeResult.Message}");
         }
 
         _currentChat = chat;
