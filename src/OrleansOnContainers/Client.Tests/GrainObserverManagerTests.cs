@@ -80,7 +80,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         await resubscriber
             .Received()
             .Register(
-                Arg.Is<GrainSubscription>(x => x.GrainId == grainId && x.Reference == observerReference), 
+                Arg.Is<GrainSubscription>(x => x.GrainId == grainId && x.ObjectReference == observerReference), 
                 Arg.Any<Func<GrainSubscription, Task>>());
     }
 
@@ -179,7 +179,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
     }
 
     [Fact]
-    public async Task GivenNoActiveSubscription_WhenResubscriptionRegistrationFails_ThenReturnAFailureResultWithAMessage()
+    public async Task GivenNoActiveSubscription_WhenResubscriptionRegistrationFails_ThenReturnASuccessResultWithAMessage()
     {
         // Arrange
         var grainId = "test";
@@ -196,7 +196,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
             .Returns(observerReference);
         var resubscriber = Substitute.For<IResubscriber<GrainSubscription>>();
         resubscriber
-            .Register(new GrainSubscription(), x => Task.CompletedTask)
+            .Register(new GrainSubscription(grainId, observerReference), x => Task.CompletedTask)
             .ReturnsForAnyArgs(x => { throw new Exception(); });
         var manager = new GrainObserverManager(
             observer,
@@ -209,7 +209,7 @@ public class GrainObserverManagerTests : IClassFixture<GrainObserverManagerTests
         var result = await manager.Subscribe(grainId);
 
         // Assert
-        Assert.False(result.IsSuccess);
+        Assert.True(result.IsSuccess);
         Assert.False(string.IsNullOrEmpty(result.Message));
     }
 

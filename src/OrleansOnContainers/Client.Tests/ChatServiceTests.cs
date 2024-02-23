@@ -24,6 +24,7 @@ public class ChatServiceTests
             var chat = "test";
             var clusterClient = Substitute.For<IClusterClient>();
             var subscriptionManager = Substitute.For<ISubscriptionManager>();
+            subscriptionManager.Subscribe(chat).Returns(Result.Success());
             var service = new ChatService(clusterClient, subscriptionManager, new NullLogger<ChatService>());
 
             // Act
@@ -154,7 +155,9 @@ public class ChatServiceTests
             clusterClient
                 .GetGrain<IChatGrain>(chat)
                 .Returns(grain);
-            var service = new ChatService(clusterClient, Substitute.For<ISubscriptionManager>(), new NullLogger<ChatService>());
+            var subscriptionManager = Substitute.For<ISubscriptionManager>();
+            subscriptionManager.Subscribe(chat).Returns(Result.Success());
+            var service = new ChatService(clusterClient, subscriptionManager, new NullLogger<ChatService>());
             await service.Join(chat, _fixture.ClientId);
             var message = "test";
 
