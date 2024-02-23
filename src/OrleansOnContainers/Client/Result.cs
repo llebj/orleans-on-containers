@@ -2,13 +2,13 @@
 
 public class Result
 {
-    public Result(bool isSuccess)
+    private Result(bool isSuccess)
     {
         IsSuccess = isSuccess;
         Message = string.Empty;
     }
 
-    public Result(bool isSuccess, string message)
+    private Result(bool isSuccess, string message)
     {
         IsSuccess = isSuccess;
         Message = message;
