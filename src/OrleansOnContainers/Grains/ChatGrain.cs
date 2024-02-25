@@ -1,46 +1,35 @@
 ﻿using GrainInterfaces;
-using Grains.Options;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Orleans.Utilities;
+using Orleans.Runtime;
 using Shared;
 
 namespace Grains;
 
 public class ChatGrain : Grain, IChatGrain
 {
-    private readonly ILogger<ChatGrain> _logger;
-    private readonly ObserverManager<IChatObserver> _subscriptionManager;
+    private IList<IChatObserver> _observers = new List<IChatObserver>();
 
-    public ChatGrain(
-        ILogger<ChatGrain> logger,
-        IOptions<ChatGrainOptions> options)
+    public async Task SendMessage(Guid clientId, string message)
     {
-        _logger = logger;
-        _subscriptionManager = new ObserverManager<IChatObserver>(TimeSpan.FromSeconds(options.Value.ObserverTimeout), logger);
-    }
-
-    public Task SendMessage(Guid clientId, string message)
-    {
-        _logger.LogDebug("{ClientId} sent message to {PrimaryKey}.", clientId, this.GetPrimaryKeyString());
-
         var chatMessage = new ChatMessage(this.GetPrimaryKeyString(), clientId, message);
-        _subscriptionManager.Notify(o => o.ReceiveMessage(chatMessage));
+        var tasks = new List<Task>();
 
-        return Task.CompletedTask;
+        foreach (var observer in _observers)
+        {
+            tasks.Add(observer.ReceiveMessage(chatMessage));
+        }
+
+        await Task.WhenAll(tasks);
     }
 
     public Task Subscribe(IChatObserver observer)
     {
-        _subscriptionManager.Subscribe(observer, observer);
+        _observers.Add(observer);
 
         return Task.CompletedTask;
     }
 
     public Task Unsubscribe(IChatObserver observer)
     {
-        _subscriptionManager.Unsubscribe(observer);
-
-        return Task.CompletedTask;
+        throw new NotImplementedException();
     }
 }

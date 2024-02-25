@@ -16,6 +16,7 @@
     <PackageVersion Include="Microsoft.Orleans.Sdk" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Orleans.Serialization.SystemTextJson" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Orleans.Server" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Orleans.TestingHost" Version="8.0.0" />
     <PackageVersion Include="NSubstitute" Version="5.1.0" />
     <PackageVersion Include="NSubstitute.Analyzers.CSharp" Version="1.0.17" />
     <PackageVersion Include="Serilog" Version="3.1.1" />
