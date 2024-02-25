@@ -15,7 +15,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Shared", "Shared\Shared.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Client.Tests", "Client.Tests\Client.Tests.csproj", "{3863BDA3-0A22-40DC-9865-CADDB8F83D01}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Grains.Tests", "Grains.Tests\Grains.Tests.csproj", "{612B092C-7902-4B18-83A7-E45C26E935C9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Grains.Tests", "Grains.Tests\Grains.Tests.csproj", "{612B092C-7902-4B18-83A7-E45C26E935C9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{45617B5C-EB8E-4AC2-8A30-4B800106CE6A}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Packages.props = Directory.Packages.props
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

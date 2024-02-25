@@ -10,28 +10,30 @@ WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0.100-1-alpine3.18-amd64 AS setup
 WORKDIR /src
-COPY ["Client/Client.csproj", "Client/"]
-COPY ["GrainInterfaces/GrainInterfaces.csproj", "GrainInterfaces/"]
-COPY ["Grains/Grains.csproj", "Grains/"]
-COPY ["Shared/Shared.csproj", "Shared/"]
+COPY Directory.Packages.props .
+COPY Client/Client.csproj Client/
+COPY GrainInterfaces/GrainInterfaces.csproj GrainInterfaces/
+COPY Grains/Grains.csproj Grains/
+COPY Shared/Shared.csproj Shared/
 
 FROM setup AS postgres
 ARG AdoNetProviderPackageVersion
-RUN dotnet add "Client/Client.csproj" package Npgsql --version ${AdoNetProviderPackageVersion}
+RUN dotnet add Client/Client.csproj package Npgsql --version ${AdoNetProviderPackageVersion}
 
 FROM ${PreRestoreStage} AS restore
-RUN dotnet restore "Client/Client.csproj"
+RUN dotnet restore Client/Client.csproj
 
 FROM restore AS build
 COPY . .
+COPY --from=restore /src/Directory.Packages.props /src
 COPY --from=restore /src/Client/Client.csproj /src/Client
-WORKDIR "/src/Client"
+WORKDIR /src/Client
 ARG Configuration=Release
-RUN dotnet build "Client.csproj" -c $Configuration -o /app/build
+RUN dotnet build Client.csproj -c $Configuration -o /app/build
 
 FROM build AS publish
 ARG Configuration
-RUN dotnet publish "Client.csproj" -c $Configuration -o /app/publish /p:UseAppHost=false
+RUN dotnet publish Client.csproj -c $Configuration -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
