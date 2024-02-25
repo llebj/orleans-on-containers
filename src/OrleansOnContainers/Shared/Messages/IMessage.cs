@@ -4,7 +4,7 @@ public interface IMessage
 {
     string Chat { get; }
 
-    Guid ClientId { get; }
+    string ClientId { get; }
 
     string Message { get; }
 }

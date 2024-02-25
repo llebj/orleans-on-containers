@@ -7,7 +7,7 @@ namespace Client.Services;
 
 internal class ChatHostedService : BackgroundService
 {
-    private readonly Guid _clientId = Guid.NewGuid();
+    private readonly string _clientId = "client";
     private readonly string _chatId = "test";
     private readonly InputHandler _inputHandler = new();
 
@@ -31,7 +31,7 @@ internal class ChatHostedService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Executing hosted service.");
-        var joinResult = await _chatService.Join(_chatId, _clientId);
+        var joinResult = await _chatService.Join(_chatId, default);
 
         if (!joinResult.IsSuccess)
         {

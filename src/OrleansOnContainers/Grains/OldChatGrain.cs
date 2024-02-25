@@ -20,7 +20,7 @@ public class OldChatGrain : Grain, IChatGrain
         _subscriptionManager = new ObserverManager<IChatObserver>(TimeSpan.FromSeconds(options.Value.ObserverTimeout), logger);
     }
 
-    public Task SendMessage(Guid clientId, string message)
+    public Task SendMessage(string clientId, string message)
     {
         _logger.LogDebug("{ClientId} sent message to {PrimaryKey}.", clientId, this.GetPrimaryKeyString());
 

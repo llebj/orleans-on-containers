@@ -26,7 +26,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         var grain = _cluster.GrainFactory.GetGrain<IChatGrain>("test");
 
         // Act
-        await grain.SendMessage(Guid.NewGuid(), "hello");
+        await grain.SendMessage("client", "hello");
 
         // Assert
     }
@@ -42,7 +42,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         await grain.Subscribe(_cluster.GrainFactory.CreateObjectReference<IChatObserver>(secondarySubscriber));
 
         // Act
-        await grain.SendMessage(Guid.NewGuid(), "hello");
+        await grain.SendMessage("client", "hello");
 
         // Assert
         await primarySubscriber.Received().ReceiveMessage(Arg.Any<ChatMessage>());

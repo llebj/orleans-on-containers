@@ -2,7 +2,7 @@
 
 public interface IChatGrain : IGrainWithStringKey
 {
-    Task SendMessage(Guid clientId, string message);
+    Task SendMessage(string clientId, string message);
 
     Task Subscribe(IChatObserver observer);
 

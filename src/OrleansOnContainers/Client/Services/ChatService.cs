@@ -41,7 +41,7 @@ public class ChatService : IChatService
         return Result.Success();
     }
 
-    public async Task<Result> SendMessage(Guid clientId, string message)
+    public async Task<Result> SendMessage(string clientId, string message)
     {
         if (string.IsNullOrWhiteSpace(message))
         {

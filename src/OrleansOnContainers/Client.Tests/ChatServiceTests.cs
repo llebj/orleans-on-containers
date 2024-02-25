@@ -50,7 +50,7 @@ public class ChatServiceTests
 
     public class SendMessageTests
     {
-        private readonly Guid _clientId = Guid.Parse("3b7a1546-a832-4b03-a0b1-f0a2c629a30f");
+        private readonly string _clientId = "client";
 
         [Theory]
         [InlineData("test")]
@@ -68,7 +68,7 @@ public class ChatServiceTests
             var subscriptionManager = Substitute.For<ISubscriptionManager>();
             subscriptionManager.Subscribe(chat).Returns(Result.Success());
             var service = new ChatService(clusterClient, subscriptionManager, new NullLogger<ChatService>());
-            await service.Join(chat, _clientId);
+            await service.Join(chat, default);
 
             // Act
             var result = await service.SendMessage(_clientId, message);
@@ -113,7 +113,7 @@ public class ChatServiceTests
             var subscriptionManager = Substitute.For<ISubscriptionManager>();
             subscriptionManager.Subscribe(chat).Returns(Result.Success());
             var service = new ChatService(clusterClient, subscriptionManager, new NullLogger<ChatService>());
-            await service.Join(chat, _clientId);
+            await service.Join(chat, default);
             var message = "test";
 
             // Act

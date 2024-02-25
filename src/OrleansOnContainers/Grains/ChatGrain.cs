@@ -7,7 +7,7 @@ public class ChatGrain : Grain, IChatGrain
 {
     private IList<IChatObserver> _observers = new List<IChatObserver>();
 
-    public async Task SendMessage(Guid clientId, string message)
+    public async Task SendMessage(string clientId, string message)
     {
         var chatMessage = new ChatMessage(this.GetPrimaryKeyString(), clientId, message);
         var tasks = new List<Task>();
