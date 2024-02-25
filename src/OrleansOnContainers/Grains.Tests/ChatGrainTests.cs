@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using NSubstitute;
 using Orleans.Serialization;
 using Orleans.TestingHost;
-using Shared;
+using Shared.Messages;
 using Xunit;
 
 namespace Grains.Tests;

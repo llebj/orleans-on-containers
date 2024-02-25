@@ -1,10 +1,10 @@
-﻿using Shared;
+﻿using Shared.Messages;
 
 namespace Client.Services;
 
 internal interface IMessageStream
 {
-    IObservable<ChatMessage> Messages { get; }
+    IObservable<IMessage> Messages { get; }
 
-    Task Push(ChatMessage message);
+    Task Push(IMessage message);
 }

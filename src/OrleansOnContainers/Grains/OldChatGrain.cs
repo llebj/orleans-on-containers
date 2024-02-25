@@ -3,7 +3,7 @@ using Grains.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orleans.Utilities;
-using Shared;
+using Shared.Messages;
 
 namespace Grains;
 

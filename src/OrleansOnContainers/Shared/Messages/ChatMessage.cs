@@ -1,8 +1,8 @@
 ﻿using Shared.Helpers;
 
-namespace Shared;
+namespace Shared.Messages;
 
-public record ChatMessage(string Chat, Guid ClientId, string Message)
+public record ChatMessage(string Chat, Guid ClientId, string Message) : IMessage
 {
     public string Chat { get; } = Chat;
 

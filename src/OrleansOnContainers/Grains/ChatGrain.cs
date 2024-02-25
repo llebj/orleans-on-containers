@@ -1,6 +1,5 @@
 ﻿using GrainInterfaces;
-using Orleans.Runtime;
-using Shared;
+using Shared.Messages;
 
 namespace Grains;
 

@@ -3,8 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Shared;
 using Shared.Extensions;
+using Shared.Messages;
 using Silo.Extensions;
 
 var configuration = new ConfigurationBuilder()

@@ -1,6 +1,4 @@
-﻿using GrainInterfaces;
-
-namespace Client.Services;
+﻿namespace Client.Services;
 
 internal interface IChatService
 {

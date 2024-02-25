@@ -1,10 +1,10 @@
 ﻿using Orleans.Concurrency;
-using Shared;
+using Shared.Messages;
 
 namespace GrainInterfaces;
 
 public interface IChatObserver : IGrainObserver
 {
     [OneWay]
-    Task ReceiveMessage(ChatMessage message);
+    Task ReceiveMessage(IMessage message);
 }

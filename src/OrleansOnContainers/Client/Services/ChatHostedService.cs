@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Shared;
+using Shared.Messages;
 using System.Text;
 
 namespace Client.Services;
@@ -167,7 +167,7 @@ internal class InputHandler
         }
     }
 
-    public void Write(ChatMessage message)
+    public void Write(IMessage message)
     {
         lock (_inputLock)
         {
