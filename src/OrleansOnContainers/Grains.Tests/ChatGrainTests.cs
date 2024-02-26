@@ -19,34 +19,37 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         _fixture = fixture;
     }
 
-    [Fact]
-    public async Task GivenNoSubscribers_WhenAMessageIsSent_ThenDoNotThrowAnException()
-    {
-        // Arrange
-        var grain = _cluster.GrainFactory.GetGrain<IChatGrain>("test");
-
-        // Act
-        await grain.SendMessage("client", "hello");
-
-        // Assert
-    }
+    // GivenAnyObservers_WhenAMessageIsSentFromAnUnsubscribedClient_ThenReturnAnUnsuccessfulResult
 
     [Fact]
     public async Task GivenMultipleSubscribedObservers_WhenAMessageIsSentToTheGrain_ThenAllTheObserversReceiveTheMessage()
     {
         // Arrange
-        var grain = _cluster.GrainFactory.GetGrain<IChatGrain>("test");
+        var grainId = "test";
+        var clientId = "client";
+        var message = "hello";
+        var grain = _cluster.GrainFactory.GetGrain<IChatGrain>(grainId);
         var primarySubscriber = Substitute.For<IChatObserver>();
         var secondarySubscriber = Substitute.For<IChatObserver>();
         await grain.Subscribe(_cluster.GrainFactory.CreateObjectReference<IChatObserver>(primarySubscriber));
         await grain.Subscribe(_cluster.GrainFactory.CreateObjectReference<IChatObserver>(secondarySubscriber));
 
         // Act
-        await grain.SendMessage("client", "hello");
+        await grain.SendMessage(clientId, message);
 
         // Assert
-        await primarySubscriber.Received().ReceiveMessage(Arg.Any<ChatMessage>());
-        await secondarySubscriber.Received().ReceiveMessage(Arg.Any<ChatMessage>());
+        await primarySubscriber.Received().ReceiveMessage(
+            Arg.Is<IMessage>(m => 
+                m.Category == MessageCategory.User && 
+                m.Chat == grainId && 
+                m.ClientId == clientId && 
+                m.Message == message));
+        await secondarySubscriber.Received().ReceiveMessage(
+            Arg.Is<IMessage>(m =>
+                m.Category == MessageCategory.User &&
+                m.Chat == grainId &&
+                m.ClientId == clientId &&
+                m.Message == message));
     }
 
     // GivenASubscribedObserver_WhenAnotherObserverSubscribes_ThenNotifyTheExistingObserver
