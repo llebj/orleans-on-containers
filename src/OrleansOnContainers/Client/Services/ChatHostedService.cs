@@ -35,13 +35,13 @@ internal class ChatHostedService : BackgroundService
 
         if (!joinResult.IsSuccess)
         {
-            SystemMessage.WriteLine(joinResult.Message);
+            MessageWriter.WriteSystemMessage(joinResult.Message);
             _lifetime.StopApplication();
 
             return;
         }
 
-        SystemMessage.WriteLine($"Joined {_chatId} as {_clientId}.");
+        MessageWriter.WriteSystemMessage($"Joined {_chatId} as {_clientId}.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -68,7 +68,7 @@ internal class ChatHostedService : BackgroundService
             _inputHandler.AddCharacter(keyInfo.KeyChar);
         }
 
-        SystemMessage.WriteLine($"Leaving {_chatId}.");
+        MessageWriter.WriteSystemMessage($"Leaving {_chatId}.");
         _logger.LogInformation("Finished executing hosted service.");
         _lifetime.StopApplication();
     }
@@ -87,7 +87,7 @@ internal class ChatHostedService : BackgroundService
 
         if (!sendResult.IsSuccess)
         {
-            SystemMessage.WriteLine(sendResult.Message);
+            MessageWriter.WriteSystemMessage(sendResult.Message);
         }
     }
 }
@@ -172,7 +172,7 @@ internal class InputHandler
         lock (_inputLock)
         {
             ClearCharacters(_messageBuilder.Length);
-            Console.WriteLine(message);
+            MessageWriter.WriteLine(message);
             Console.Write(_messageBuilder.Message);
         }
     }
