@@ -19,7 +19,16 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         _fixture = fixture;
     }
 
-    // GivenAnyObservers_WhenAMessageIsSentFromAnUnsubscribedClient_ThenReturnAnUnsuccessfulResult
+    [Fact]
+    public async Task GivenAnyObservers_WhenAMessageIsSentFromAnUnsubscribedClient_ThenThrowAnInvalidOperationException()
+    {
+        // Arrange
+        var grain = _cluster.GrainFactory.GetGrain<IChatGrain>("test");
+
+        // Act
+        // Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => grain.SendMessage("client", "hello"));
+    }
 
     [Fact]
     public async Task GivenMultipleSubscribedObservers_WhenAMessageIsSentToTheGrain_ThenAllTheObserversReceiveTheMessage()
