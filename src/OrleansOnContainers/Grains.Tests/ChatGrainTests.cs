@@ -1,6 +1,5 @@
 ﻿using GrainInterfaces;
 using Microsoft.Extensions.Configuration;
-using Microsoft.VisualStudio.TestPlatform.CommunicationUtilities;
 using NSubstitute;
 using Orleans.Serialization;
 using Orleans.TestingHost;
@@ -21,10 +20,10 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
     }
 
     [Fact]
-    public async Task GivenAnyObservers_WhenAMessageIsSentFromAnUnsubscribedClient_ThenThrowAnInvalidOperationException()
+    public async Task GivenAnySubscribers_WhenAMessageIsSentFromAnUnsubscribedClient_ThenThrowAnInvalidOperationException()
     {
         // Arrange
-        var grainId = nameof(GivenAnyObservers_WhenAMessageIsSentFromAnUnsubscribedClient_ThenThrowAnInvalidOperationException);
+        var grainId = nameof(GivenAnySubscribers_WhenAMessageIsSentFromAnUnsubscribedClient_ThenThrowAnInvalidOperationException);
         var grain = _cluster.GrainFactory.GetGrain<IChatGrain>(grainId);
 
         // Act
@@ -33,32 +32,32 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
     }
 
     [Fact]
-    public async Task GivenMultipleSubscribedObservers_WhenAMessageIsSentToTheGrain_ThenAllTheObserversReceiveTheMessage()
+    public async Task GivenMultipleSubscribers_WhenAMessageIsSent_ThenAllTheObserversReceiveTheMessage()
     {
         // Arrange
-        var grainId = nameof(GivenMultipleSubscribedObservers_WhenAMessageIsSentToTheGrain_ThenAllTheObserversReceiveTheMessage);
+        var grainId = nameof(GivenMultipleSubscribers_WhenAMessageIsSent_ThenAllTheObserversReceiveTheMessage);
         var expectedClientId = "client-1";
         var message = "hello";
-        var firstSubscriber = Substitute.For<IChatObserver>();
-        var secondSubscriber = Substitute.For<IChatObserver>();
+        var firstObserver = Substitute.For<IChatObserver>();
+        var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
             .SetGrain(grainId)
-            .WithSubscriber(expectedClientId, firstSubscriber)
-            .WithSubscriber("client-2", secondSubscriber)
+            .WithSubscriber(expectedClientId, firstObserver)
+            .WithSubscriber("client-2", secondObserver)
             .Build();
 
         // Act
         await grain.SendMessage(expectedClientId, message);
 
         // Assert
-        await firstSubscriber.Received().ReceiveMessage(
+        await firstObserver.Received().ReceiveMessage(
             Arg.Is<IMessage>(m => 
                 m.Category == MessageCategory.User && 
                 m.Chat == grainId && 
                 m.ClientId == expectedClientId && 
                 m.Message == message));
-        await secondSubscriber.Received().ReceiveMessage(
+        await secondObserver.Received().ReceiveMessage(
             Arg.Is<IMessage>(m =>
                 m.Category == MessageCategory.User &&
                 m.Chat == grainId &&
@@ -67,24 +66,24 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
     }
 
     [Fact]
-    public async Task GivenASubscribedObserver_WhenAnotherObserverSubscribes_ThenNotifyTheExistingObserver()
+    public async Task GivenASubscriber_WhenAnotherClientSubscribes_ThenNotifyTheExistingObserver()
     {
         // Arrange
-        var grainId = nameof(GivenASubscribedObserver_WhenAnotherObserverSubscribes_ThenNotifyTheExistingObserver);
+        var grainId = nameof(GivenASubscriber_WhenAnotherClientSubscribes_ThenNotifyTheExistingObserver);
         var expectedClientId = "client-2";
-        var firstSubscriber = Substitute.For<IChatObserver>();
-        var secondSubscriber = Substitute.For<IChatObserver>();
+        var firstObserver = Substitute.For<IChatObserver>();
+        var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
             .SetGrain(grainId)
-            .WithSubscriber("client-1", firstSubscriber)
+            .WithSubscriber("client-1", firstObserver)
             .Build();
 
         // Act
-        await grain.Subscribe(expectedClientId, _cluster.GrainFactory.CreateObjectReference<IChatObserver>(secondSubscriber));
+        await grain.Subscribe(expectedClientId, _cluster.GrainFactory.CreateObjectReference<IChatObserver>(secondObserver));
 
         // Assert
-        await firstSubscriber.Received().ReceiveMessage(
+        await firstObserver.Received().ReceiveMessage(
             Arg.Is<IMessage>(m =>
                 m.Category == MessageCategory.System &&
                 m.Chat == grainId &&
@@ -92,52 +91,52 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
     }
 
     [Fact]
-    public async Task GivenASubscribedObserver_WhenAnotherObserverSubscribes_ThenDoNotNotifyTheNewObserver()
+    public async Task GivenASubscriber_WhenAnotherClientSubscribes_ThenDoNotNotifyTheNewObserver()
     {
         // Arrange
-        var grainId = nameof(GivenASubscribedObserver_WhenAnotherObserverSubscribes_ThenDoNotNotifyTheNewObserver);
-        var firstSubscriber = Substitute.For<IChatObserver>();
-        var secondSubscriber = Substitute.For<IChatObserver>();
+        var grainId = nameof(GivenASubscriber_WhenAnotherClientSubscribes_ThenDoNotNotifyTheNewObserver);
+        var firstObserver = Substitute.For<IChatObserver>();
+        var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
             .SetGrain(grainId)
-            .WithSubscriber("client-1", firstSubscriber)
+            .WithSubscriber("client-1", firstObserver)
             .Build();
 
         // Act
-        await grain.Subscribe("client-2", _cluster.GrainFactory.CreateObjectReference<IChatObserver>(secondSubscriber));
+        await grain.Subscribe("client-2", _cluster.GrainFactory.CreateObjectReference<IChatObserver>(secondObserver));
 
         // Assert
-        await secondSubscriber.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
+        await secondObserver.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
     }
 
     [Fact]
-    public async Task GivenMultipleSubscribedObservers_WhenAnExistingObserverResubscribes_ThenDoNotNotifyTheOtherObservers()
+    public async Task GivenMultipleSubscribers_WhenAnExistingSubscriberResubscribes_ThenDoNotNotifyTheOtherObservers()
     {
         // Arrange
-        var grainId = nameof(GivenMultipleSubscribedObservers_WhenAnExistingObserverResubscribes_ThenDoNotNotifyTheOtherObservers);
+        var grainId = nameof(GivenMultipleSubscribers_WhenAnExistingSubscriberResubscribes_ThenDoNotNotifyTheOtherObservers);
         var clientOne = "client-1";
-        var firstSubscriber = Substitute.For<IChatObserver>();
-        var secondSubscriber = Substitute.For<IChatObserver>();
+        var firstObserver = Substitute.For<IChatObserver>();
+        var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
             .SetGrain(grainId)
-            .WithSubscriber(clientOne, firstSubscriber)
-            .WithSubscriber("client-2", secondSubscriber)
+            .WithSubscriber(clientOne, firstObserver)
+            .WithSubscriber("client-2", secondObserver)
             .Build();
 
         // Act
-        await grain.Subscribe(clientOne, _fixture.Cluster.GrainFactory.CreateObjectReference<IChatObserver>(firstSubscriber));
+        await grain.Subscribe(clientOne, _fixture.Cluster.GrainFactory.CreateObjectReference<IChatObserver>(firstObserver));
 
         // Assert
-        await secondSubscriber.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
+        await secondObserver.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
     }
 
     [Fact]
-    public async Task GivenMultipleSubscriptions_WhenAnExistingSubscriptionIsReregisteredWithANewObserverAndAMessageIsSent_ThenSendTheMessageToTheNewObserverInsteadOfTheOldOne()
+    public async Task GivenMultipleSubscribers_WhenAnExistingSubscriberResubscribesWithANewObserverAndAMessageIsSent_ThenSendTheMessageToTheNewObserverInsteadOfTheOldOne()
     {
         // Arrange
-        var grainId = nameof(GivenMultipleSubscriptions_WhenAnExistingSubscriptionIsReregisteredWithANewObserverAndAMessageIsSent_ThenSendTheMessageToTheNewObserverInsteadOfTheOldOne);
+        var grainId = nameof(GivenMultipleSubscribers_WhenAnExistingSubscriberResubscribesWithANewObserverAndAMessageIsSent_ThenSendTheMessageToTheNewObserverInsteadOfTheOldOne);
         var clientOne = "client-1";
         var clientTwo = "client-2";
         var message = "hello";
