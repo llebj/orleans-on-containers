@@ -28,6 +28,14 @@ internal class ChatObserver : IChatObserver
     public async Task ReceiveMessage(IMessage message)
     {
         _logger.LogDebug("Received message from {Client}.", message.ClientId);
+
+        // When this method is called from a grain then the grain will wait for a completion
+        // message back. I think this means that the grain will have to wait for every client
+        // to finish writing the message before it returns, causing delays. This could be avoided by
+        // having the client return to the grain after accepting the message rather than after finishing
+        // all of its processing.
+        // TODO: Some testing will need to be done on the order of method calls in order to verify
+        // observer behaviour.
         await _incomingMessages.Push(message);
     }
 }

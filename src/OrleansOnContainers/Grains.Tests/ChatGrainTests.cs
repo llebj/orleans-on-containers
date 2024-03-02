@@ -91,7 +91,9 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
 
     // GivenMultipleSubscribedObservers_WhenOneObserverUnsubscribes_ThenNotifyTheRemainingObserer
 
-    // GivenAnObserverThatHasUnsubscribed_WhenAMessageIsSentToTheGrain_ThenTheObserverDoesNotReceiveAnyMoreMessages
+    // GivenAnObserverThatHasUnsubscribed_WhenAMessageIsSentToTheGrain_ThenTheGrainDoesNotAttemptToDeliverAnyMoreMessagesToTheUnsubscribedObserver
+
+    // GivenMultipleSubscribedObservers_WhenAMessageIsSentAndOneObserverFails_ThenTheGrainDoesNotAttemptToDeliverAnyMoreMessagesToTheFailedObserver
 }
 
 public class TestClusterFixture : IDisposable
