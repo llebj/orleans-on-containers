@@ -77,7 +77,7 @@ public class GrainObserverManagerTests
         var clusterClient = Substitute.For<IClusterClient>();
         var grain = Substitute.For<IChatGrain>();
         grain
-            .Subscribe(Arg.Any<IChatObserver>())
+            .Subscribe(grainId, Arg.Any<IChatObserver>())
             .Returns(x => { throw new Exception(); });
         clusterClient
             .GetGrain<IChatGrain>(grainId)
@@ -145,7 +145,7 @@ public class GrainObserverManagerTests
         var grain = Substitute.For<IChatGrain>();
         // Fail the first subscription call to the grain.
         grain
-            .Subscribe(Arg.Any<IChatObserver>())
+            .Subscribe(grainId, Arg.Any<IChatObserver>())
             .Returns(
                 x => { throw new Exception(); },
                 x => Task.CompletedTask);

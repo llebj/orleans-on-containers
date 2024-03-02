@@ -116,7 +116,7 @@ public class GrainObserverManager : ISubscriptionManager
     private async Task SubscribeToGrain(GrainSubscription grainSubscription)
     {
         var grain = _clusterClient.GetGrain<IChatGrain>(grainSubscription.GrainId);
-        await grain.Subscribe(grainSubscription.ObjectReference!);
+        await grain.Subscribe(grainSubscription.GrainId, grainSubscription.ObjectReference!);
     }
 }
 

@@ -35,33 +35,59 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
     {
         // Arrange
         var grainId = "test";
-        var clientId = "client";
+        var expectedClientId = "client-1";
         var message = "hello";
-        var grain = _cluster.GrainFactory.GetGrain<IChatGrain>(grainId);
-        var primarySubscriber = Substitute.For<IChatObserver>();
-        var secondarySubscriber = Substitute.For<IChatObserver>();
-        await grain.Subscribe(_cluster.GrainFactory.CreateObjectReference<IChatObserver>(primarySubscriber));
-        await grain.Subscribe(_cluster.GrainFactory.CreateObjectReference<IChatObserver>(secondarySubscriber));
+        var firtsSubscriber = Substitute.For<IChatObserver>();
+        var secondSubscriber = Substitute.For<IChatObserver>();
+        var grain = await _fixture
+            .GetGrainBuilder()
+            .SetGrain(grainId)
+            .WithSubscriber(expectedClientId, firtsSubscriber)
+            .WithSubscriber("client-2", secondSubscriber)
+            .Build();
 
         // Act
-        await grain.SendMessage(clientId, message);
+        await grain.SendMessage(expectedClientId, message);
 
         // Assert
-        await primarySubscriber.Received().ReceiveMessage(
+        await firtsSubscriber.Received().ReceiveMessage(
             Arg.Is<IMessage>(m => 
                 m.Category == MessageCategory.User && 
                 m.Chat == grainId && 
-                m.ClientId == clientId && 
+                m.ClientId == expectedClientId && 
                 m.Message == message));
-        await secondarySubscriber.Received().ReceiveMessage(
+        await secondSubscriber.Received().ReceiveMessage(
             Arg.Is<IMessage>(m =>
                 m.Category == MessageCategory.User &&
                 m.Chat == grainId &&
-                m.ClientId == clientId &&
+                m.ClientId == expectedClientId &&
                 m.Message == message));
     }
 
-    // GivenASubscribedObserver_WhenAnotherObserverSubscribes_ThenNotifyTheExistingObserver
+    [Fact]
+    public async Task GivenASubscribedObserver_WhenAnotherObserverSubscribes_ThenNotifyTheExistingObserver()
+    {
+        // Arrange
+        var grainId = "test";
+        var expectedClientId = "client-2";
+        var firstSubscriber = Substitute.For<IChatObserver>();
+        var secondSubscriber = Substitute.For<IChatObserver>();
+        var grain = await _fixture
+            .GetGrainBuilder()
+            .SetGrain(grainId)
+            .WithSubscriber("client-1", firstSubscriber)
+            .Build();
+
+        // Act
+        await grain.Subscribe(expectedClientId, _cluster.GrainFactory.CreateObjectReference<IChatObserver>(secondSubscriber));
+
+        // Assert
+        await firstSubscriber.Received().ReceiveMessage(
+            Arg.Is<IMessage>(m =>
+                m.Category == MessageCategory.System &&
+                m.Chat == grainId &&
+                m.ClientId == expectedClientId));
+    }
 
     // GivenMultipleSubscribedObservers_WhenOneObserverUnsubscribes_ThenNotifyTheRemainingObserer
 
@@ -78,6 +104,8 @@ public class TestClusterFixture : IDisposable
         .Build();
 
     void IDisposable.Dispose() => Cluster.StopAllSilos();
+
+    public GrainBuilder GetGrainBuilder() => new(Cluster);
 
     private class TestSiloConfigurations : ISiloConfigurator
     {
@@ -101,5 +129,51 @@ public class TestClusterFixture : IDisposable
                     isSupported: type => type.Namespace!.StartsWith("Shared"));
             });
         }
+    }
+}
+
+public class GrainBuilder
+{
+    private readonly TestCluster _cluster;
+    private readonly ICollection<(string Id, IChatObserver Observer)> _observers = new List<(string Id, IChatObserver Observer)>();
+    private IChatGrain? _grain;
+
+    public GrainBuilder(TestCluster cluster)
+    {
+        _cluster = cluster;
+    }
+
+    public async Task<IChatGrain> Build()
+    {
+        if (_grain is null)
+        {
+            throw new InvalidOperationException("No grain has been set to build.");
+        }
+
+        foreach (var (Id, Observer) in _observers)
+        {
+            await _grain.Subscribe(Id, _cluster.GrainFactory.CreateObjectReference<IChatObserver>(Observer));
+        }
+
+        foreach (var (Id, Observer) in _observers)
+        {
+            Observer.ClearReceivedCalls();
+        }
+
+        return _grain;
+    }
+
+    public GrainBuilder SetGrain(string grainId)
+    {
+        _grain = _cluster.GrainFactory.GetGrain<IChatGrain>(grainId);
+
+        return this;
+    }
+
+    public GrainBuilder WithSubscriber(string observerId, IChatObserver observer)
+    {
+        _observers.Add((observerId, observer));
+
+        return this;
     }
 }

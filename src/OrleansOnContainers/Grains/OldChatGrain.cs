@@ -30,7 +30,7 @@ public class OldChatGrain : Grain, IChatGrain
         return Task.CompletedTask;
     }
 
-    public Task Subscribe(IChatObserver observer)
+    public Task Subscribe(string clientId, IChatObserver observer)
     {
         _subscriptionManager.Subscribe(observer, observer);
 

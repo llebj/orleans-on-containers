@@ -34,8 +34,8 @@ public class ChatGrain : Grain, IChatGrain
         await Task.WhenAll(tasks);
     }
 
-    public Task Subscribe(IChatObserver observer)
-    {
+    public Task Subscribe(string clientId, IChatObserver observer)
+        {
         _observers.Add(observer.ToString(), observer);
 
         return Task.CompletedTask;
