@@ -24,25 +24,43 @@ public class ChatGrain : Grain, IChatGrain
         }
 
         var chatMessage = new ChatMessage(grainId, clientId, message);
-        var tasks = new List<Task>();
-
-        foreach (var observer in _observers.Values)
-        {
-            tasks.Add(observer.ReceiveMessage(chatMessage));
-        }
-
-        await Task.WhenAll(tasks);
+        await NotifyObservers(chatMessage);
     }
 
-    public Task Subscribe(string clientId, IChatObserver observer)
-        {
-        _observers.Add(clientId, observer);
+    public async Task Subscribe(string clientId, IChatObserver observer)
+    {
+        var isNewSubscriber = _observers.TryAdd(clientId, observer);
 
-        return Task.CompletedTask;
+        if (!isNewSubscriber)
+        {
+            _observers[clientId] = observer;
+
+            return;
+        }
+
+        var message = new SubscriptionMessage(this.GetPrimaryKeyString(), clientId);
+        await NotifyObservers(message, observerId => observerId != clientId);
     }
 
     public Task Unsubscribe(IChatObserver observer)
     {
         throw new NotImplementedException();
+    }
+
+    private async Task NotifyObservers(IMessage message, Func<string, bool>? predicate = null)
+    {
+        var tasks = new List<Task>();
+
+        foreach (var observer in _observers)
+        {
+            if (predicate is not null && !predicate(observer.Key))
+            {
+                continue;
+            }
+
+            tasks.Add(observer.Value.ReceiveMessage(message));
+        }
+
+        await Task.WhenAll(tasks);
     }
 }

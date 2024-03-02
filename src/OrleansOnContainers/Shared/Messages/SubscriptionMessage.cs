@@ -2,7 +2,7 @@
 
 namespace Shared.Messages;
 
-public class Subscription(string Chat, string ClientId) : IMessage
+public class SubscriptionMessage(string Chat, string ClientId) : IMessage
 {
     public MessageCategory Category => MessageCategory.System;
 
