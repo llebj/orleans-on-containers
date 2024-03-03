@@ -37,10 +37,8 @@ public class OldChatGrain : Grain, IChatGrain
         return Task.CompletedTask;
     }
 
-    public Task Unsubscribe(IChatObserver observer)
+    public Task Unsubscribe(string clientId)
     {
-        _subscriptionManager.Unsubscribe(observer);
-
-        return Task.CompletedTask;
+        throw new NotImplementedException();
     }
 }

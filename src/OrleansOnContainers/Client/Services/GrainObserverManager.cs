@@ -70,8 +70,8 @@ public class GrainObserverManager : ISubscriptionManager
         }
 
         var grain = _clusterClient.GetGrain<IChatGrain>(_subscriptionInformation.GrainId);
-        // GrainSubscription cannot be null here if IsValid
-        await grain.Unsubscribe(_subscriptionInformation.GrainSubscription!.ObjectReference);
+        throw new NotSupportedException("A client Id is required to unsubscribe from a grain.");
+        await grain.Unsubscribe(string.Empty);
         _subscriptionInformation.Clear();
         await _resubscriber.Clear();
 
@@ -116,7 +116,8 @@ public class GrainObserverManager : ISubscriptionManager
     private async Task SubscribeToGrain(GrainSubscription grainSubscription)
     {
         var grain = _clusterClient.GetGrain<IChatGrain>(grainSubscription.GrainId);
-        await grain.Subscribe(grainSubscription.GrainId, grainSubscription.ObjectReference!);
+        throw new NotSupportedException("A client Id is required to subscribe to a grain.");
+        await grain.Subscribe(string.Empty, grainSubscription.ObjectReference!);
     }
 }
 

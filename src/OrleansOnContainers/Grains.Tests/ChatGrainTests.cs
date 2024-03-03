@@ -166,11 +166,131 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
                 m.Message == message));
     }
 
-    // GivenMultipleSubscribedObservers_WhenOneObserverUnsubscribes_ThenNotifyTheRemainingObserer
+    [Fact]
+    public async Task GivenMultipleSubscribers_WhenAClientUnsubscribes_ThenNotifyTheRemainingObserver()
+    {
+        // Arrange
+        var grainId = nameof(GivenMultipleSubscribers_WhenAClientUnsubscribes_ThenNotifyTheRemainingObserver);
+        var clientOne = "client-1";
+        var firstObserver = Substitute.For<IChatObserver>();
+        var secondObserver = Substitute.For<IChatObserver>();
+        var grain = await _fixture
+            .GetGrainBuilder()
+            .SetGrain(grainId)
+            .WithSubscriber(clientOne, firstObserver)
+            .WithSubscriber("client-2", secondObserver)
+            .Build();
 
-    // GivenAnObserverThatHasUnsubscribed_WhenAMessageIsSentToTheGrain_ThenTheGrainDoesNotAttemptToDeliverAnyMoreMessagesToTheUnsubscribedObserver
+        // Act
+        await grain.Unsubscribe(clientOne);
 
-    // GivenMultipleSubscribedObservers_WhenAMessageIsSentAndOneObserverFails_ThenTheGrainDoesNotAttemptToDeliverAnyMoreMessagesToTheFailedObserver
+        // Assert
+        await secondObserver.Received().ReceiveMessage(
+            Arg.Is<IMessage>(m =>
+                m.Category == MessageCategory.System &&
+                m.Chat == grainId &&
+                m.ClientId == clientOne));
+    }
+
+    [Fact]
+    public async Task GivenMultipleSubscribers_WhenAClientUnsubscribes_ThenDoNotNotifyTheUnsubscribedObserver()
+    {
+        // Arrange
+        var grainId = nameof(GivenMultipleSubscribers_WhenAClientUnsubscribes_ThenNotifyTheRemainingObserver);
+        var clientOne = "client-1";
+        var firstObserver = Substitute.For<IChatObserver>();
+        var secondObserver = Substitute.For<IChatObserver>();
+        var grain = await _fixture
+            .GetGrainBuilder()
+            .SetGrain(grainId)
+            .WithSubscriber(clientOne, firstObserver)
+            .WithSubscriber("client-2", secondObserver)
+            .Build();
+
+        // Act
+        await grain.Unsubscribe(clientOne);
+
+        // Assert
+        await firstObserver.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
+    }
+
+    [Fact]
+    public async Task GivenMultipleSubscribers_WhenAnUnsubscribedClientUnsubscribes_ThenDoNotNotifyAnyObservers()
+    {
+        // Arrange
+        var grainId = nameof(GivenMultipleSubscribers_WhenAClientUnsubscribes_ThenNotifyTheRemainingObserver);
+        var firstObserver = Substitute.For<IChatObserver>();
+        var secondObserver = Substitute.For<IChatObserver>();
+        var grain = await _fixture
+            .GetGrainBuilder()
+            .SetGrain(grainId)
+            .WithSubscriber("client-1", firstObserver)
+            .WithSubscriber("client-2", secondObserver)
+            .Build();
+
+        // Act
+        await grain.Unsubscribe("client-3");
+
+        // Assert
+        await firstObserver.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
+        await secondObserver.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
+    }
+
+    [Fact]
+    public async Task GivenMultipleSubscribers_WhenAClientUnsubscribesAndAMessageIsSent_ThenDoNotSendAnyMoreMessagesToTheUnsubscribedObserver()
+    {
+        // Arrange
+        var grainId = nameof(GivenMultipleSubscribers_WhenAClientUnsubscribes_ThenNotifyTheRemainingObserver);
+        var firstObserver = Substitute.For<IChatObserver>();
+        var secondObserver = Substitute.For<IChatObserver>();
+        var unsubscribedClient = "client-1";
+        var remainingClient = "client-2";
+        var grain = await _fixture
+            .GetGrainBuilder()
+            .SetGrain(grainId)
+            .WithSubscriber(unsubscribedClient, firstObserver)
+            .WithSubscriber(remainingClient, secondObserver)
+            .Build();
+
+        // Act
+        await grain.Unsubscribe(unsubscribedClient);
+        await grain.SendMessage(remainingClient, "hello");
+
+        // Assert
+        await firstObserver.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
+    }
+
+    [Fact]
+    public async Task GivenMultipleSubscribers_WhenAMessageIsSentAndOneObserverFails_ThenDoNotSendAnyMoreMessagesToTheFailedObserver()
+    {
+        // Arrange
+        var grainId = nameof(GivenMultipleSubscribers_WhenAMessageIsSentAndOneObserverFails_ThenDoNotSendAnyMoreMessagesToTheFailedObserver);
+        var firstMessage = "first";
+        var secondMessage = "second";
+        var firstObserver = Substitute.For<IChatObserver>();
+        firstObserver
+            .ReceiveMessage(Arg.Is<IMessage>(m => m.Message == firstMessage))
+            .Returns(x => { throw new Exception(); });
+        var secondObserver = Substitute.For<IChatObserver>();
+        var failedClient = "client-1";
+        var remainingClient = "client-2";
+        var grain = await _fixture
+            .GetGrainBuilder()
+            .SetGrain(grainId)
+            .WithSubscriber(failedClient, firstObserver)
+            .WithSubscriber(remainingClient, secondObserver)
+            .Build();
+
+        // Act
+        // The first message results in the firstObserver throwing an exception.
+        await grain.SendMessage(remainingClient, firstMessage);
+        await grain.SendMessage(remainingClient, secondMessage);
+
+        // Assert
+        await firstObserver.DidNotReceive().ReceiveMessage(Arg.Is<IMessage>(m => m.Message == secondMessage));
+    }
+
+    // GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver
 }
 
 public class TestClusterFixture : IDisposable

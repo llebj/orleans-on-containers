@@ -5,7 +5,7 @@ namespace Grains;
 
 public class ChatGrain : Grain, IChatGrain
 {
-    private readonly IDictionary<string, IChatObserver> _observers = new Dictionary<string, IChatObserver>();
+    private readonly Dictionary<string, IChatObserver> _observers = [];
 
     /// <summary>
     /// Sends a message to all subscribed clients.
@@ -42,14 +42,24 @@ public class ChatGrain : Grain, IChatGrain
         await NotifyObservers(message, observerId => observerId != clientId);
     }
 
-    public Task Unsubscribe(IChatObserver observer)
+    public async Task Unsubscribe(string clientId)
     {
-        throw new NotImplementedException();
+        if (!_observers.ContainsKey(clientId))
+        {
+            return;
+        }
+
+        _observers.Remove(clientId);
+        var message = new UnsubscriptionMessage(this.GetPrimaryKeyString(), clientId);
+        await NotifyObservers(message);
     }
 
     private async Task NotifyObservers(IMessage message, Func<string, bool>? predicate = null)
     {
-        var tasks = new List<Task>();
+        var i = 0;
+        var clients = new string[_observers.Count];
+        var tasks = new Task[_observers.Count];
+        var failedClients = new List<string>();
 
         foreach (var observer in _observers)
         {
@@ -58,9 +68,44 @@ public class ChatGrain : Grain, IChatGrain
                 continue;
             }
 
-            tasks.Add(observer.Value.ReceiveMessage(message));
+            clients[i] = observer.Key;
+            tasks[i] = observer.Value.ReceiveMessage(message);
+            ++i;
         }
 
-        await Task.WhenAll(tasks);
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch
+        {
+            failedClients = ProcessFailedTasks(clients, tasks, i);
+        }
+
+        foreach (string client in failedClients) 
+        { 
+            _observers.Remove(client);
+        }
+    }
+
+    private List<string> ProcessFailedTasks(string[] clients, Task[] tasks, int limit)
+    {
+        var result = new List<string>();
+        // Limit should never be greater than the array lengths, but to be sure we want
+        // to adjust limit.
+        limit = Math.Min(clients.Length, limit);
+        limit = Math.Min(tasks.Length, limit);
+
+        for (int i = 0; i < limit; i++)
+        {
+            Task task = tasks[i];
+
+            if (task.IsFaulted)
+            {
+                result.Add(clients[i]);
+            }
+        }
+
+        return result;
     }
 }

@@ -2,7 +2,7 @@
 
 namespace Shared.Messages;
 
-public record Unsubscription(string Chat, string ClientId) : IMessage
+public record UnsubscriptionMessage(string Chat, string ClientId) : IMessage
 {
     public MessageCategory Category => MessageCategory.System;
 
