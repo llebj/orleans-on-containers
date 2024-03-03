@@ -4,7 +4,7 @@ namespace Client.Services;
 
 internal interface IMessageStream
 {
-    IObservable<IMessage> Messages { get; }
+    IObservable<OldChatMessage> Messages { get; }
 
-    Task Push(IMessage message);
+    Task Push(OldChatMessage message);
 }

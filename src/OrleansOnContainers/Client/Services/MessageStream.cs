@@ -10,7 +10,7 @@ namespace Client.Services;
 /// </summary>
 internal class MessageStream : IMessageStream, IDisposable
 {
-    private readonly Subject<IMessage> _receivedMessagesSubject = new();
+    private readonly Subject<OldChatMessage> _receivedMessagesSubject = new();
     private readonly ILogger<MessageStream> _logger;
 
     public MessageStream(ILogger<MessageStream> logger)
@@ -18,14 +18,14 @@ internal class MessageStream : IMessageStream, IDisposable
         _logger = logger;
     }
 
-    public IObservable<IMessage> Messages => _receivedMessagesSubject;
+    public IObservable<OldChatMessage> Messages => _receivedMessagesSubject;
 
     public void Dispose()
     {
         _receivedMessagesSubject.Dispose();
     }
 
-    public Task Push(IMessage message)
+    public Task Push(OldChatMessage message)
     {
         _logger.LogDebug("Pushing message.");
         _receivedMessagesSubject?.OnNext(message);

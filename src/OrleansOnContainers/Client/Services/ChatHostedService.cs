@@ -7,7 +7,7 @@ namespace Client.Services;
 
 internal class ChatHostedService : BackgroundService
 {
-    private readonly string _clientId = "client";
+    private readonly Guid _clientId = Guid.NewGuid();
     private readonly string _chatId = "test";
     private readonly InputHandler _inputHandler = new();
 
@@ -167,7 +167,7 @@ internal class InputHandler
         }
     }
 
-    public void Write(IMessage message)
+    public void Write(OldChatMessage message)
     {
         lock (_inputLock)
         {

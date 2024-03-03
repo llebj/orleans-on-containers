@@ -36,6 +36,6 @@ internal class ChatObserver : IChatObserver
         // all of its processing.
         // TODO: Some testing will need to be done on the order of method calls in order to verify
         // observer behaviour.
-        await _incomingMessages.Push(message);
+        await _incomingMessages.Push(new OldChatMessage(message.Chat, Guid.TryParse(message.ClientId, out var client) ? client : default, message.Message));
     }
 }

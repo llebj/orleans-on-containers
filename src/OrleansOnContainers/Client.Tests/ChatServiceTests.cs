@@ -50,7 +50,7 @@ public class ChatServiceTests
 
     public class SendMessageTests
     {
-        private readonly string _clientId = "client";
+        private readonly Guid _clientId = Guid.NewGuid();
 
         [Theory]
         [InlineData("test")]
@@ -61,9 +61,9 @@ public class ChatServiceTests
             // Arrange
             var chat = "chat";
             var clusterClient = Substitute.For<IClusterClient>();
-            var grain = Substitute.For<IChatGrain>();
+            var grain = Substitute.For<IOldChatGrain>();
             clusterClient
-                .GetGrain<IChatGrain>(chat)
+                .GetGrain<IOldChatGrain>(chat)
                 .Returns(grain);
             var subscriptionManager = Substitute.For<ISubscriptionManager>();
             subscriptionManager.Subscribe(chat).Returns(Result.Success());
@@ -83,9 +83,9 @@ public class ChatServiceTests
             // Arrange
             var chat = "chat";
             var clusterClient = Substitute.For<IClusterClient>();
-            var grain = Substitute.For<IChatGrain>();
+            var grain = Substitute.For<IOldChatGrain>();
             clusterClient
-                .GetGrain<IChatGrain>(chat)
+                .GetGrain<IOldChatGrain>(chat)
                 .Returns(grain);
             var service = new ChatService(clusterClient, Substitute.For<ISubscriptionManager>(), new NullLogger<ChatService>());
             var message = "test";
@@ -103,12 +103,12 @@ public class ChatServiceTests
             // Arrange
             var chat = "chat";
             var clusterClient = Substitute.For<IClusterClient>();
-            var grain = Substitute.For<IChatGrain>();
+            var grain = Substitute.For<IOldChatGrain>();
             grain
                 .SendMessage(_clientId, Arg.Any<string>())
                 .Returns(x => { throw new Exception(); });
             clusterClient
-                .GetGrain<IChatGrain>(chat)
+                .GetGrain<IOldChatGrain>(chat)
                 .Returns(grain);
             var subscriptionManager = Substitute.For<ISubscriptionManager>();
             subscriptionManager.Subscribe(chat).Returns(Result.Success());

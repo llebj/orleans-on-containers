@@ -16,9 +16,9 @@ public class GrainObserverManagerTests
         // Arrange
         var grainId = "test";
         var clusterClient = Substitute.For<IClusterClient>();
-        var grain = Substitute.For<IChatGrain>();
+        var grain = Substitute.For<IOldChatGrain>();
         clusterClient
-            .GetGrain<IChatGrain>(grainId)
+            .GetGrain<IOldChatGrain>(grainId)
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var observerReference = Substitute.For<IChatObserver>();
@@ -46,9 +46,9 @@ public class GrainObserverManagerTests
         // Arrange
         var grainId = "test";
         var clusterClient = Substitute.For<IClusterClient>();
-        var grain = Substitute.For<IChatGrain>();
+        var grain = Substitute.For<IOldChatGrain>();
         clusterClient
-            .GetGrain<IChatGrain>(grainId)
+            .GetGrain<IOldChatGrain>(grainId)
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var grainFactory = Substitute.For<IGrainFactory>();
@@ -75,12 +75,12 @@ public class GrainObserverManagerTests
         // Arrange
         var grainId = "test";
         var clusterClient = Substitute.For<IClusterClient>();
-        var grain = Substitute.For<IChatGrain>();
+        var grain = Substitute.For<IOldChatGrain>();
         grain
-            .Subscribe(grainId, Arg.Any<IChatObserver>())
+            .Subscribe(Arg.Any<IChatObserver>())
             .Returns(x => { throw new Exception(); });
         clusterClient
-            .GetGrain<IChatGrain>(grainId)
+            .GetGrain<IOldChatGrain>(grainId)
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var observerReference = Substitute.For<IChatObserver>();
@@ -108,9 +108,9 @@ public class GrainObserverManagerTests
         // Arrange
         var grainId = "test";
         var clusterClient = Substitute.For<IClusterClient>();
-        var grain = Substitute.For<IChatGrain>();
+        var grain = Substitute.For<IOldChatGrain>();
         clusterClient
-            .GetGrain<IChatGrain>(grainId)
+            .GetGrain<IOldChatGrain>(grainId)
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var observerReference = Substitute.For<IChatObserver>();
@@ -142,15 +142,15 @@ public class GrainObserverManagerTests
         // Arrange
         var grainId = "test";
         var clusterClient = Substitute.For<IClusterClient>();
-        var grain = Substitute.For<IChatGrain>();
+        var grain = Substitute.For<IOldChatGrain>();
         // Fail the first subscription call to the grain.
         grain
-            .Subscribe(grainId, Arg.Any<IChatObserver>())
+            .Subscribe(Arg.Any<IChatObserver>())
             .Returns(
                 x => { throw new Exception(); },
                 x => Task.CompletedTask);
         clusterClient
-            .GetGrain<IChatGrain>(grainId)
+            .GetGrain<IOldChatGrain>(grainId)
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var observerReference = Substitute.For<IChatObserver>();
@@ -184,9 +184,9 @@ public class GrainObserverManagerTests
     {
         // Arrange
         var clusterClient = Substitute.For<IClusterClient>();
-        var grain = Substitute.For<IChatGrain>();
+        var grain = Substitute.For<IOldChatGrain>();
         clusterClient
-            .GetGrain<IChatGrain>(Arg.Any<string>())
+            .GetGrain<IOldChatGrain>(Arg.Any<string>())
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var manager = new GrainObserverManager(
@@ -210,9 +210,9 @@ public class GrainObserverManagerTests
         // Arrange
         var grainId = "test";
         var clusterClient = Substitute.For<IClusterClient>();
-        var grain = Substitute.For<IChatGrain>();
+        var grain = Substitute.For<IOldChatGrain>();
         clusterClient
-            .GetGrain<IChatGrain>(grainId)
+            .GetGrain<IOldChatGrain>(grainId)
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var observerReference = Substitute.For<IChatObserver>();
@@ -242,9 +242,9 @@ public class GrainObserverManagerTests
         // Arrange
         var grainId = "test";
         var clusterClient = Substitute.For<IClusterClient>();
-        var grain = Substitute.For<IChatGrain>();
+        var grain = Substitute.For<IOldChatGrain>();
         clusterClient
-            .GetGrain<IChatGrain>(grainId)
+            .GetGrain<IOldChatGrain>(grainId)
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var observerReference = Substitute.For<IChatObserver>();
@@ -274,9 +274,9 @@ public class GrainObserverManagerTests
         // Arrange
         var grainId = "test";
         var clusterClient = Substitute.For<IClusterClient>();
-        var grain = Substitute.For<IChatGrain>();
+        var grain = Substitute.For<IOldChatGrain>();
         clusterClient
-            .GetGrain<IChatGrain>(grainId)
+            .GetGrain<IOldChatGrain>(grainId)
             .Returns(grain);
         var observer = Substitute.For<IChatObserver>();
         var manager = new GrainObserverManager(

@@ -41,7 +41,7 @@ public class ChatService : IChatService
         return Result.Success();
     }
 
-    public async Task<Result> SendMessage(string clientId, string message)
+    public async Task<Result> SendMessage(Guid clientId, string message)
     {
         if (string.IsNullOrWhiteSpace(message))
         {
@@ -57,7 +57,7 @@ public class ChatService : IChatService
             return Result.Failure("The message failed to send as there is no active subscription.");
         }
 
-        var grain = _clusterClient.GetGrain<IChatGrain>(_currentChat);
+        var grain = _clusterClient.GetGrain<IOldChatGrain>(_currentChat);
 
         try
         {
