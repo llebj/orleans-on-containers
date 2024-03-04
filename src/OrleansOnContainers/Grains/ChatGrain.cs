@@ -1,11 +1,23 @@
 ﻿using GrainInterfaces;
+using Grains.Options;
+using Microsoft.Extensions.Options;
 using Shared.Messages;
 
 namespace Grains;
 
 public class ChatGrain : Grain, IChatGrain
 {
-    private readonly Dictionary<string, IChatObserver> _observers = [];
+    private readonly Dictionary<string, ObserverState> _observers = [];
+    private readonly TimeSpan _observerTimeout;
+    private readonly TimeProvider _timeProvider;
+
+    public ChatGrain(
+        IOptions<ChatGrainOptions> options,
+        TimeProvider timeProvider)
+    {
+        _observerTimeout = TimeSpan.FromSeconds(options.Value.ObserverTimeout);
+        _timeProvider = timeProvider;
+    }
 
     /// <summary>
     /// Sends a message to all subscribed clients.
@@ -29,11 +41,12 @@ public class ChatGrain : Grain, IChatGrain
 
     public async Task Subscribe(string clientId, IChatObserver observer)
     {
-        var isNewSubscriber = _observers.TryAdd(clientId, observer);
+        var observerState = new ObserverState(GetCurrentTime(), observer);
+        var isNewSubscriber = _observers.TryAdd(clientId, observerState);
 
         if (!isNewSubscriber)
         {
-            _observers[clientId] = observer;
+            _observers[clientId] = observerState;
 
             return;
         }
@@ -54,22 +67,32 @@ public class ChatGrain : Grain, IChatGrain
         await NotifyObservers(message);
     }
 
+    private DateTimeOffset GetCurrentTime() => _timeProvider.GetUtcNow();
+
     private async Task NotifyObservers(IMessage message, Func<string, bool>? predicate = null)
     {
+        var currentTime = GetCurrentTime();
         var i = 0;
         var clients = new string[_observers.Count];
         var tasks = new Task[_observers.Count];
-        var failedClients = new List<string>();
+        var failedClients = new HashSet<string>();
 
-        foreach (var observer in _observers)
+        foreach (var (Key, Observer) in _observers)
         {
-            if (predicate is not null && !predicate(observer.Key))
+            if ((currentTime - Observer.LastSeen) > _observerTimeout)
+            {
+                failedClients.Add(Key);
+
+                continue;
+            }
+
+            if (predicate is not null && !predicate(Key))
             {
                 continue;
             }
 
-            clients[i] = observer.Key;
-            tasks[i] = observer.Value.ReceiveMessage(message);
+            clients[i] = Key;
+            tasks[i] = Observer.Observer.ReceiveMessage(message);
             ++i;
         }
 
@@ -79,7 +102,7 @@ public class ChatGrain : Grain, IChatGrain
         }
         catch
         {
-            failedClients = ProcessFailedTasks(clients, tasks, i);
+            failedClients = ProcessFailedTasks(failedClients, clients, tasks, i);
         }
 
         foreach (string client in failedClients) 
@@ -88,9 +111,8 @@ public class ChatGrain : Grain, IChatGrain
         }
     }
 
-    private List<string> ProcessFailedTasks(string[] clients, Task[] tasks, int limit)
+    private HashSet<string> ProcessFailedTasks(HashSet<string> failedClients, string[] clients, Task[] tasks, int limit)
     {
-        var result = new List<string>();
         // Limit should never be greater than the array lengths, but to be sure we want
         // to adjust limit.
         limit = Math.Min(clients.Length, limit);
@@ -102,10 +124,17 @@ public class ChatGrain : Grain, IChatGrain
 
             if (task.IsFaulted)
             {
-                result.Add(clients[i]);
+                failedClients.Add(clients[i]);
             }
         }
 
-        return result;
+        return failedClients;
+    }
+
+    private class ObserverState(DateTimeOffset LastSeen, IChatObserver Observer)
+    {
+        public DateTimeOffset LastSeen { get; set; } = LastSeen;
+
+        public IChatObserver Observer { get; set; } = Observer;
     }
 }

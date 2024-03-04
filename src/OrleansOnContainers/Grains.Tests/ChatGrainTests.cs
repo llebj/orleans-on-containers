@@ -1,5 +1,8 @@
 ﻿using GrainInterfaces;
+using Grains.Options;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Orleans.Serialization;
 using Orleans.TestingHost;
@@ -15,7 +18,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
 
     public ChatGrainTests(TestClusterFixture fixture)
     {
-        _cluster = fixture.Cluster;
+        _cluster = fixture.DefaultCluster;
         _fixture = fixture;
     }
 
@@ -126,7 +129,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
             .Build();
 
         // Act
-        await grain.Subscribe(clientOne, _fixture.Cluster.GrainFactory.CreateObjectReference<IChatObserver>(firstObserver));
+        await grain.Subscribe(clientOne, _fixture.DefaultCluster.GrainFactory.CreateObjectReference<IChatObserver>(firstObserver));
 
         // Assert
         await secondObserver.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
@@ -152,7 +155,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
 
         // Act
         // Register a new observer instance under the existing "clientOne" subscription.
-        await grain.Subscribe(clientOne, _fixture.Cluster.GrainFactory.CreateObjectReference<IChatObserver>(thirdObserver));
+        await grain.Subscribe(clientOne, _fixture.DefaultCluster.GrainFactory.CreateObjectReference<IChatObserver>(thirdObserver));
         // Send a message from the second client (as it remains unchanged).
         await grain.SendMessage(clientTwo, message);
 
@@ -290,26 +293,81 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         await firstObserver.DidNotReceive().ReceiveMessage(Arg.Is<IMessage>(m => m.Message == secondMessage));
     }
 
-    // GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver
+    // There is nothing explicit on the IChatGrain interface to suggest that subscriptions can expire, so this test is technically testing
+    // an implementation detail rather than the interface. However, as stated in the Orleans documentation, observers are considered to be
+    // unreliable, so it is reasonable to expect that any implementation will have a mechanism to remove defunct observers. Therefore, I
+    // believe in this case it is acceptable to compromise and to test the implementation directly.
+    [Fact]
+    public async Task GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver()
+    {
+        // Arrange
+        var grainId = nameof(GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver);
+        var message = "hello";
+        var firstObserver = Substitute.For<IChatObserver>();
+        var secondObserver = Substitute.For<IChatObserver>();
+        var clientOne = "client-1";
+        // use 2/3 so that one interval does not expire an observer, but two intervals does.
+        var interval = GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver_SiloConfiguration.ObserverTimeout * (2 / 3.0);
+
+        var customCluster = TestClusterFixture
+            .StartCustomCluster<GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver_SiloConfiguration>();
+        var grain = await _fixture
+            .GetGrainBuilder(customCluster)
+            .SetGrain(grainId)
+            .WithSubscriber(clientOne, firstObserver)
+            .WithSubscriber("client-2", secondObserver)
+            .Build();
+
+        // Act
+        GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver_SiloConfiguration
+            .TimeProvider.Advance(TimeSpan.FromSeconds(interval));
+        // Resubscribe the first client to reset its timeout.
+        await grain.Subscribe(clientOne, _cluster.GrainFactory.CreateObjectReference<IChatObserver>(firstObserver));
+        // Advance time sufficiently to expire the second subscriber.
+        GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver_SiloConfiguration
+            .TimeProvider.Advance(TimeSpan.FromSeconds(interval));
+        await grain.SendMessage(clientOne, message);
+
+        // Assert
+        await secondObserver.DidNotReceive().ReceiveMessage(Arg.Is<IMessage>(m => m.Message == message));
+    }
 }
 
 public class TestClusterFixture : IDisposable
 {
-    public TestClusterFixture() => Cluster.Deploy();
+    public TestClusterFixture() => DefaultCluster.Deploy();
 
-    public TestCluster Cluster { get; } = new TestClusterBuilder()
-        .AddSiloBuilderConfigurator<TestSiloConfigurations>()
-        .AddClientBuilderConfigurator<TestClientConfigurations>()
+    public TestCluster DefaultCluster { get; } = new TestClusterBuilder()
+        .AddSiloBuilderConfigurator<DefaultTestSiloConfiguration>()
+        .AddClientBuilderConfigurator<TestClientConfiguration>()
         .Build();
 
-    void IDisposable.Dispose() => Cluster.StopAllSilos();
+    public void Dispose() => DefaultCluster.StopAllSilos();
 
-    public GrainBuilder GetGrainBuilder() => new(Cluster);
+    public GrainBuilder GetGrainBuilder() => new(DefaultCluster);
 
-    private class TestSiloConfigurations : ISiloConfigurator
+    public GrainBuilder GetGrainBuilder(TestCluster cluster) => new(cluster);
+
+    public static TestCluster StartCustomCluster<T>() where T : ISiloConfigurator, new()
+    {
+        var cluster = new TestClusterBuilder()
+            .AddSiloBuilderConfigurator<T>()
+            .AddClientBuilderConfigurator<TestClientConfiguration>()
+            .Build();
+        cluster.Deploy();
+
+        return cluster;
+    }
+
+    private class DefaultTestSiloConfiguration : ISiloConfigurator
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
+            siloBuilder.ConfigureServices(services =>
+            {
+                services.AddSingleton<TimeProvider, FakeTimeProvider>();
+                services.Configure<ChatGrainOptions>(x => x.ObserverTimeout = int.MaxValue);
+            });
             siloBuilder.Services.AddSerializer(serializerBuilder =>
             {
                 serializerBuilder.AddJsonSerializer(
@@ -318,7 +376,7 @@ public class TestClusterFixture : IDisposable
         }
     }
 
-    private class TestClientConfigurations : IClientBuilderConfigurator
+    private class TestClientConfiguration : IClientBuilderConfigurator
     {
         public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
         {
@@ -328,6 +386,29 @@ public class TestClusterFixture : IDisposable
                     isSupported: type => type.Namespace!.StartsWith("Shared"));
             });
         }
+    }
+}
+
+public class GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver_SiloConfiguration : ISiloConfigurator
+{
+    private static readonly FakeTimeProvider _timeProvider = new();
+
+    public static FakeTimeProvider TimeProvider => _timeProvider;
+
+    public static int ObserverTimeout => 100;
+
+    public void Configure(ISiloBuilder siloBuilder)
+    {
+        siloBuilder.ConfigureServices(services =>
+        {
+            services.AddSingleton<TimeProvider>(_timeProvider);
+            services.Configure<ChatGrainOptions>(x => x.ObserverTimeout = ObserverTimeout);
+        });
+        siloBuilder.Services.AddSerializer(serializerBuilder =>
+        {
+            serializerBuilder.AddJsonSerializer(
+                isSupported: type => type.Namespace!.StartsWith("Shared"));
+        });
     }
 }
 
