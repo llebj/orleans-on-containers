@@ -2,13 +2,13 @@
 
 namespace Shared.Messages;
 
-public class SubscriptionMessage(string Chat, string ClientId) : IMessage
+public class SubscriptionMessage(string Chat, Guid ClientId) : IMessage
 {
     public MessageCategory Category => MessageCategory.System;
 
     public string Chat { get; } = Chat;
 
-    public string ClientId { get; } = ClientId;
+    public Guid ClientId { get; } = ClientId;
 
     public string Message => $"{ClientId} has subscribed.";
 

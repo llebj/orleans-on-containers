@@ -2,13 +2,13 @@
 
 namespace Shared.Messages;
 
-public record ChatMessage(string Chat, string ClientId, string Message) : IMessage
+public record ChatMessage(string Chat, Guid ClientId, string Message) : IMessage
 {
     public MessageCategory Category => MessageCategory.User;
 
     public string Chat { get; } = Chat;
 
-    public string ClientId { get; } = ClientId;
+    public Guid ClientId { get; } = ClientId;
 
     public string Message { get; } = Message;
 

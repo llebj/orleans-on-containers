@@ -7,7 +7,7 @@ namespace Grains;
 
 public class ChatGrain : Grain, IChatGrain
 {
-    private readonly Dictionary<string, ObserverState> _observers = [];
+    private readonly Dictionary<Guid, ObserverState> _observers = [];
     private readonly TimeSpan _observerTimeout;
     private readonly TimeProvider _timeProvider;
 
@@ -26,7 +26,7 @@ public class ChatGrain : Grain, IChatGrain
     /// <param name="message">The message to be sent.</param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException">Thrown when the sending client is not subscribed.</exception>
-    public async Task SendMessage(string clientId, string message)
+    public async Task SendMessage(Guid clientId, string message)
     {
         var grainId = this.GetPrimaryKeyString();
 
@@ -39,7 +39,7 @@ public class ChatGrain : Grain, IChatGrain
         await NotifyObservers(chatMessage);
     }
 
-    public async Task Subscribe(string clientId, IChatObserver observer)
+    public async Task Subscribe(Guid clientId, IChatObserver observer)
     {
         var observerState = new ObserverState(GetCurrentTime(), observer);
         var isNewSubscriber = _observers.TryAdd(clientId, observerState);
@@ -55,7 +55,7 @@ public class ChatGrain : Grain, IChatGrain
         await NotifyObservers(message, observerId => observerId != clientId);
     }
 
-    public async Task Unsubscribe(string clientId)
+    public async Task Unsubscribe(Guid clientId)
     {
         if (!_observers.ContainsKey(clientId))
         {
@@ -69,13 +69,13 @@ public class ChatGrain : Grain, IChatGrain
 
     private DateTimeOffset GetCurrentTime() => _timeProvider.GetUtcNow();
 
-    private async Task NotifyObservers(IMessage message, Func<string, bool>? predicate = null)
+    private async Task NotifyObservers(IMessage message, Func<Guid, bool>? predicate = null)
     {
         var currentTime = GetCurrentTime();
         var i = 0;
-        var clients = new string[_observers.Count];
+        var clients = new Guid[_observers.Count];
         var tasks = new Task[_observers.Count];
-        var failedClients = new HashSet<string>();
+        var failedClients = new HashSet<Guid>();
 
         foreach (var (Key, Observer) in _observers)
         {
@@ -105,13 +105,13 @@ public class ChatGrain : Grain, IChatGrain
             failedClients = ProcessFailedTasks(failedClients, clients, tasks, i);
         }
 
-        foreach (string client in failedClients) 
+        foreach (var client in failedClients) 
         { 
             _observers.Remove(client);
         }
     }
 
-    private HashSet<string> ProcessFailedTasks(HashSet<string> failedClients, string[] clients, Task[] tasks, int limit)
+    private HashSet<Guid> ProcessFailedTasks(HashSet<Guid> failedClients, Guid[] clients, Task[] tasks, int limit)
     {
         // Limit should never be greater than the array lengths, but to be sure we want
         // to adjust limit.
