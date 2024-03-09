@@ -70,9 +70,8 @@ public class ChatGrain : Grain, IChatGrain
     private async Task NotifyObservers(IMessage message, Func<Guid, bool>? predicate = null)
     {
         var currentTime = GetCurrentTime();
-        var i = 0;
-        var clients = new Guid[_subscriberManager.Count];
-        var tasks = new Task[_subscriberManager.Count];
+        var tasks = new List<Task>();
+        var taskClients = new Dictionary<int, Guid>();
         var failedClients = new HashSet<Guid>();
 
         foreach (var (Id, Subscriber) in _subscriberManager)
@@ -89,9 +88,9 @@ public class ChatGrain : Grain, IChatGrain
                 continue;
             }
 
-            clients[i] = Id;
-            tasks[i] = Subscriber.Observer.ReceiveMessage(message);
-            ++i;
+            var task = Subscriber.Observer.ReceiveMessage(message);
+            tasks.Add(task);
+            taskClients.Add(task.Id, Id);
         }
 
         try
@@ -100,7 +99,7 @@ public class ChatGrain : Grain, IChatGrain
         }
         catch
         {
-            failedClients = ProcessFailedTasks(failedClients, clients, tasks, i);
+            failedClients = ProcessFailedTasks(failedClients, tasks, taskClients);
         }
 
         foreach (var client in failedClients) 
@@ -109,20 +108,13 @@ public class ChatGrain : Grain, IChatGrain
         }
     }
 
-    private static HashSet<Guid> ProcessFailedTasks(HashSet<Guid> failedClients, Guid[] clients, Task[] tasks, int limit)
+    private static HashSet<Guid> ProcessFailedTasks(HashSet<Guid> failedClients, IEnumerable<Task> tasks, Dictionary<int, Guid> taskClients)
     {
-        // Limit should never be greater than the array lengths, but to be sure we want
-        // to adjust limit.
-        limit = Math.Min(clients.Length, limit);
-        limit = Math.Min(tasks.Length, limit);
-
-        for (int i = 0; i < limit; i++)
+        foreach (var task in tasks)
         {
-            Task task = tasks[i];
-
             if (task.IsFaulted)
             {
-                failedClients.Add(clients[i]);
+                failedClients.Add(taskClients[task.Id]);
             }
         }
 
