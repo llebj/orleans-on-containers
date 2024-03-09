@@ -2,15 +2,15 @@
 
 namespace Shared.Messages;
 
-public record ChatMessage(string Chat, Guid ClientId, string Message) : IMessage
+public record ChatMessage(string Chat, string ScreenName, string Message) : IMessage
 {
     public MessageCategory Category => MessageCategory.User;
 
     public string Chat { get; } = Chat;
 
-    public Guid ClientId { get; } = ClientId;
+    public string ScreenName { get; } = ScreenName;
 
     public string Message { get; } = Message;
 
-    public override string ToString() => MessageBuilder.Build(Message, Chat, ClientId);
+    public override string ToString() => MessageBuilder.Build(Message, Chat, ScreenName);
 }

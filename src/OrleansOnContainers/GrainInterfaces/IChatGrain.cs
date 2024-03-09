@@ -24,7 +24,7 @@ public interface IChatGrain : IGrainWithStringKey
     Task SendMessage(Guid clientId, string message);
 
     // TODO: Allow a user to specify a screen name when subscribing.
-    Task Subscribe(Guid clientId, IChatObserver observer);
+    Task Subscribe(Guid clientId, string screenName, IChatObserver observer);
 
     Task Unsubscribe(Guid clientId);
 }

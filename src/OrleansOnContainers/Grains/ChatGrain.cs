@@ -2,12 +2,13 @@
 using Grains.Options;
 using Microsoft.Extensions.Options;
 using Shared.Messages;
+using System.Collections;
 
 namespace Grains;
 
 public class ChatGrain : Grain, IChatGrain
 {
-    private readonly Dictionary<Guid, ObserverState> _observers = [];
+    private readonly SubscriberManager _subscriberManager = new();
     private readonly TimeSpan _observerTimeout;
     private readonly TimeProvider _timeProvider;
 
@@ -30,40 +31,37 @@ public class ChatGrain : Grain, IChatGrain
     {
         var grainId = this.GetPrimaryKeyString();
 
-        if (!_observers.ContainsKey(clientId))
+        if (!_subscriberManager.ClientIsSubscribed(clientId))
         {
             throw new InvalidOperationException($"The client \"{clientId}\" attempted to send a message to the chat \"{grainId}\" without an active subscription.");
         }
 
-        var chatMessage = new ChatMessage(grainId, clientId, message);
+        var chatMessage = new ChatMessage(grainId, _subscriberManager.GetClientScreenName(clientId), message);
         await NotifyObservers(chatMessage);
     }
 
-    public async Task Subscribe(Guid clientId, IChatObserver observer)
+    public async Task Subscribe(Guid clientId, string screenName, IChatObserver observer)
     {
-        var observerState = new ObserverState(GetCurrentTime(), observer);
-        var isNewSubscriber = _observers.TryAdd(clientId, observerState);
+        var isNewSubscriber = _subscriberManager.AddSubscriber(clientId, screenName, GetCurrentTime(), observer);
 
         if (!isNewSubscriber)
         {
-            _observers[clientId] = observerState;
-
             return;
         }
 
-        var message = new SubscriptionMessage(this.GetPrimaryKeyString(), clientId);
+        var message = new SubscriptionMessage(this.GetPrimaryKeyString(), screenName);
         await NotifyObservers(message, observerId => observerId != clientId);
     }
 
     public async Task Unsubscribe(Guid clientId)
     {
-        if (!_observers.ContainsKey(clientId))
+        if (!_subscriberManager.ClientIsSubscribed(clientId))
         {
             return;
         }
 
-        _observers.Remove(clientId);
-        var message = new UnsubscriptionMessage(this.GetPrimaryKeyString(), clientId);
+        var subscriberState = _subscriberManager.RemoveSubscriber(clientId);
+        var message = new UnsubscriptionMessage(this.GetPrimaryKeyString(), subscriberState.ScreenName);
         await NotifyObservers(message);
     }
 
@@ -73,26 +71,26 @@ public class ChatGrain : Grain, IChatGrain
     {
         var currentTime = GetCurrentTime();
         var i = 0;
-        var clients = new Guid[_observers.Count];
-        var tasks = new Task[_observers.Count];
+        var clients = new Guid[_subscriberManager.Count];
+        var tasks = new Task[_subscriberManager.Count];
         var failedClients = new HashSet<Guid>();
 
-        foreach (var (Key, Observer) in _observers)
+        foreach (var (Id, Subscriber) in _subscriberManager)
         {
-            if ((currentTime - Observer.LastSeen) > _observerTimeout)
+            if ((currentTime - Subscriber.LastSeen) > _observerTimeout)
             {
-                failedClients.Add(Key);
+                failedClients.Add(Id);
 
                 continue;
             }
 
-            if (predicate is not null && !predicate(Key))
+            if (predicate is not null && !predicate(Id))
             {
                 continue;
             }
 
-            clients[i] = Key;
-            tasks[i] = Observer.Observer.ReceiveMessage(message);
+            clients[i] = Id;
+            tasks[i] = Subscriber.Observer.ReceiveMessage(message);
             ++i;
         }
 
@@ -107,11 +105,11 @@ public class ChatGrain : Grain, IChatGrain
 
         foreach (var client in failedClients) 
         { 
-            _observers.Remove(client);
+            _subscriberManager.RemoveSubscriber(client);
         }
     }
 
-    private HashSet<Guid> ProcessFailedTasks(HashSet<Guid> failedClients, Guid[] clients, Task[] tasks, int limit)
+    private static HashSet<Guid> ProcessFailedTasks(HashSet<Guid> failedClients, Guid[] clients, Task[] tasks, int limit)
     {
         // Limit should never be greater than the array lengths, but to be sure we want
         // to adjust limit.
@@ -129,12 +127,49 @@ public class ChatGrain : Grain, IChatGrain
         }
 
         return failedClients;
-    }
+    }    
+}
 
-    private class ObserverState(DateTimeOffset LastSeen, IChatObserver Observer)
+internal class SubscriberManager : IEnumerable<KeyValuePair<Guid, SubscriberState>>
+{
+    private readonly Dictionary<Guid, SubscriberState> _subscribers = [];
+
+    public int Count => _subscribers.Count;
+
+    public bool AddSubscriber(Guid clientId, string screenName, DateTimeOffset currentTime, IChatObserver observer)
     {
-        public DateTimeOffset LastSeen { get; set; } = LastSeen;
+        var observerState = new SubscriberState(screenName, currentTime, observer);
+        var isNewSubscriber = _subscribers.TryAdd(clientId, observerState);
 
-        public IChatObserver Observer { get; set; } = Observer;
+        if (!isNewSubscriber)
+        {
+            _subscribers[clientId] = observerState;
+        }
+
+        return isNewSubscriber;
     }
+
+    public bool ClientIsSubscribed(Guid clientId) => _subscribers.ContainsKey(clientId);
+
+    public string GetClientScreenName(Guid clientId) => _subscribers[clientId].ScreenName;
+
+    public IEnumerator<KeyValuePair<Guid, SubscriberState>> GetEnumerator() => _subscribers.GetEnumerator();
+
+    public SubscriberState RemoveSubscriber(Guid clientId)
+    {
+        _subscribers.Remove(clientId, out var state);
+
+        return state!;
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() => _subscribers.GetEnumerator();
+}
+
+internal class SubscriberState(string ScreenName, DateTimeOffset LastSeen, IChatObserver Observer)
+{
+    public DateTimeOffset LastSeen { get; set; } = LastSeen;
+
+    public IChatObserver Observer { get; set; } = Observer;
+
+    public string ScreenName { get; set; } = ScreenName;
 }

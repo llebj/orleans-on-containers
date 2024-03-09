@@ -2,15 +2,15 @@
 
 namespace Shared.Messages;
 
-public record UnsubscriptionMessage(string Chat, Guid ClientId) : IMessage
+public record UnsubscriptionMessage(string Chat, string ScreenName) : IMessage
 {
     public MessageCategory Category => MessageCategory.System;
 
     public string Chat { get; } = Chat;
 
-    public Guid ClientId { get; } = ClientId;
+    public string ScreenName { get; } = ScreenName;
 
-    public string Message => $"{ClientId} has unsubscribed.";
+    public string Message => $"{ScreenName} has unsubscribed.";
 
-    public override string ToString() => MessageBuilder.Build(Message, Chat, ClientId);
+    public override string ToString() => MessageBuilder.Build(Message, Chat, ScreenName);
 }

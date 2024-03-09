@@ -2,15 +2,15 @@
 
 namespace Shared.Messages;
 
-public class SubscriptionMessage(string Chat, Guid ClientId) : IMessage
+public class SubscriptionMessage(string Chat, string ScreenName) : IMessage
 {
     public MessageCategory Category => MessageCategory.System;
 
     public string Chat { get; } = Chat;
 
-    public Guid ClientId { get; } = ClientId;
+    public string ScreenName { get; } = ScreenName;
 
-    public string Message => $"{ClientId} has subscribed.";
+    public string Message => $"{ScreenName} has subscribed.";
 
-    public override string ToString() => MessageBuilder.Build(Message, Chat, ClientId);
+    public override string ToString() => MessageBuilder.Build(Message, Chat, ScreenName);
 }

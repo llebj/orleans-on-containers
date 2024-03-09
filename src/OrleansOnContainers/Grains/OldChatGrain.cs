@@ -24,7 +24,7 @@ public class OldChatGrain : Grain, IOldChatGrain
     {
         _logger.LogDebug("{ClientId} sent message to {PrimaryKey}.", clientId, this.GetPrimaryKeyString());
 
-        var chatMessage = new ChatMessage(this.GetPrimaryKeyString(), clientId, message);
+        var chatMessage = new ChatMessage(this.GetPrimaryKeyString(), clientId.ToString(), message);
         _subscriptionManager.Notify(o => o.ReceiveMessage(chatMessage));
 
         return Task.CompletedTask;

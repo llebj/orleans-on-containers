@@ -6,7 +6,7 @@ public interface IMessage
 
     string Chat { get; }
 
-    Guid ClientId { get; }
+    string ScreenName { get; }
 
     string Message { get; }
 }
