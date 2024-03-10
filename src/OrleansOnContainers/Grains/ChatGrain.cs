@@ -20,13 +20,16 @@ public class ChatGrain : Grain, IChatGrain
         _timeProvider = timeProvider;
     }
 
-    /// <summary>
-    /// Sends a message to all subscribed clients.
-    /// </summary>
-    /// <param name="clientId">The client sending the message.</param>
-    /// <param name="message">The message to be sent.</param>
-    /// <returns></returns>
-    /// <exception cref="InvalidOperationException">Thrown when the sending client is not subscribed.</exception>
+    public Task<bool> ScreenNameIsAvailable(string screenName)
+    {
+        if (string.IsNullOrWhiteSpace(screenName))
+        {
+            return Task.FromResult(false);
+        }
+
+        return Task.FromResult(_subscriberManager.ScreenNameIsAvailable(screenName));
+    }
+
     public async Task SendMessage(Guid clientId, string message)
     {
         var grainId = this.GetPrimaryKeyString();
@@ -42,6 +45,7 @@ public class ChatGrain : Grain, IChatGrain
 
     public async Task Subscribe(Guid clientId, string screenName, IChatObserver observer)
     {
+        await ThrowIfScreenNameNotAvailable(screenName);
         var isNewSubscriber = _subscriberManager.AddSubscriber(clientId, screenName, GetCurrentTime(), observer);
 
         if (!isNewSubscriber)
@@ -119,7 +123,17 @@ public class ChatGrain : Grain, IChatGrain
         }
 
         return failedClients;
-    }    
+    }
+
+    private async Task ThrowIfScreenNameNotAvailable(string screenName)
+    {
+        var screenNameIsAvailable = await ScreenNameIsAvailable(screenName);
+
+        if (!screenNameIsAvailable)
+        {
+            throw new ArgumentException($"The screen name \"{screenName}\" is not available in the chat \"{this.GetPrimaryKeyString()}\".");
+        }
+    }
 }
 
 internal class SubscriberManager : IEnumerable<KeyValuePair<Guid, SubscriberState>>
@@ -147,6 +161,8 @@ internal class SubscriberManager : IEnumerable<KeyValuePair<Guid, SubscriberStat
 
     public IEnumerator<KeyValuePair<Guid, SubscriberState>> GetEnumerator() => _subscribers.GetEnumerator();
 
+    IEnumerator IEnumerable.GetEnumerator() => _subscribers.GetEnumerator();
+
     public SubscriberState RemoveSubscriber(Guid clientId)
     {
         _subscribers.Remove(clientId, out var state);
@@ -154,7 +170,7 @@ internal class SubscriberManager : IEnumerable<KeyValuePair<Guid, SubscriberStat
         return state!;
     }
 
-    IEnumerator IEnumerable.GetEnumerator() => _subscribers.GetEnumerator();
+    public bool ScreenNameIsAvailable(string screenName) => !_subscribers.Any(subscriber => subscriber.Value.ScreenName == screenName);
 }
 
 internal class SubscriberState(string ScreenName, DateTimeOffset LastSeen, IChatObserver Observer)

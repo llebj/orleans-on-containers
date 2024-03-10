@@ -11,7 +11,14 @@ using Xunit;
 
 namespace Grains.Tests;
 
-public class ChatGrainTests : IClassFixture<TestClusterFixture>
+[CollectionDefinition(ClusterCollection.Name)]
+public class ClusterCollection : ICollectionFixture<TestClusterFixture>
+{
+    public const string Name = nameof(ClusterCollection);
+}
+
+[Collection(ClusterCollection.Name)]
+public class ChatGrainTests
 {
     private readonly TestCluster _cluster;
     private readonly TestClusterFixture _fixture;
@@ -46,7 +53,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
-            .SetGrain(grainId)
+            .GetGrain(grainId)
             .WithSubscriber(expectedClientId, expectedScreenName, firstObserver)
             .WithSubscriber(Guid.NewGuid(), "client-2", secondObserver)
             .Build();
@@ -80,7 +87,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
-            .SetGrain(grainId)
+            .GetGrain(grainId)
             .WithSubscriber(Guid.NewGuid(), "client-1", firstObserver)
             .Build();
 
@@ -104,7 +111,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
-            .SetGrain(grainId)
+            .GetGrain(grainId)
             .WithSubscriber(Guid.NewGuid(), "client-1", firstObserver)
             .Build();
 
@@ -126,7 +133,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
-            .SetGrain(grainId)
+            .GetGrain(grainId)
             .WithSubscriber(clientOne, screenNameOne, firstObserver)
             .WithSubscriber(Guid.NewGuid(), "client-2", secondObserver)
             .Build();
@@ -153,7 +160,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         var thirdObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
-            .SetGrain(grainId)
+            .GetGrain(grainId)
             .WithSubscriber(clientOne, screenNameOne, firstObserver)
             .WithSubscriber(clientTwo, screenNameTwo, secondObserver)
             .Build();
@@ -185,7 +192,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
-            .SetGrain(grainId)
+            .GetGrain(grainId)
             .WithSubscriber(clientOne, screenNameOne, firstObserver)
             .WithSubscriber(Guid.NewGuid(), "client-2", secondObserver)
             .Build();
@@ -205,14 +212,14 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
     public async Task GivenMultipleSubscribers_WhenAClientUnsubscribes_ThenDoNotNotifyTheUnsubscribedObserver()
     {
         // Arrange
-        var grainId = nameof(GivenMultipleSubscribers_WhenAClientUnsubscribes_ThenNotifyTheRemainingObserver);
+        var grainId = nameof(GivenMultipleSubscribers_WhenAClientUnsubscribes_ThenDoNotNotifyTheUnsubscribedObserver);
         var clientOne = Guid.NewGuid();
         var screenNameOne = "client-1";
         var firstObserver = Substitute.For<IChatObserver>();
         var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
-            .SetGrain(grainId)
+            .GetGrain(grainId)
             .WithSubscriber(clientOne, screenNameOne, firstObserver)
             .WithSubscriber(Guid.NewGuid(), "client-2", secondObserver)
             .Build();
@@ -228,12 +235,12 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
     public async Task GivenMultipleSubscribers_WhenAnUnsubscribedClientUnsubscribes_ThenDoNotNotifyAnyObservers()
     {
         // Arrange
-        var grainId = nameof(GivenMultipleSubscribers_WhenAClientUnsubscribes_ThenNotifyTheRemainingObserver);
+        var grainId = nameof(GivenMultipleSubscribers_WhenAnUnsubscribedClientUnsubscribes_ThenDoNotNotifyAnyObservers);
         var firstObserver = Substitute.For<IChatObserver>();
         var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
             .GetGrainBuilder()
-            .SetGrain(grainId)
+            .GetGrain(grainId)
             .WithSubscriber(Guid.NewGuid(), "client-1", firstObserver)
             .WithSubscriber(Guid.NewGuid(), "client-2", secondObserver)
             .Build();
@@ -250,14 +257,14 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
     public async Task GivenMultipleSubscribers_WhenAClientUnsubscribesAndAMessageIsSent_ThenDoNotSendAnyMoreMessagesToTheUnsubscribedObserver()
     {
         // Arrange
-        var grainId = nameof(GivenMultipleSubscribers_WhenAClientUnsubscribes_ThenNotifyTheRemainingObserver);
+        var grainId = nameof(GivenMultipleSubscribers_WhenAClientUnsubscribesAndAMessageIsSent_ThenDoNotSendAnyMoreMessagesToTheUnsubscribedObserver);
         var firstObserver = Substitute.For<IChatObserver>();
         var secondObserver = Substitute.For<IChatObserver>();
         var unsubscribedClient = Guid.NewGuid();
         var remainingClient = Guid.NewGuid();
         var grain = await _fixture
             .GetGrainBuilder()
-            .SetGrain(grainId)
+            .GetGrain(grainId)
             .WithSubscriber(unsubscribedClient, "client-1", firstObserver)
             .WithSubscriber(remainingClient, "client-2", secondObserver)
             .Build();
@@ -286,7 +293,7 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         var remainingClient = Guid.NewGuid();
         var grain = await _fixture
             .GetGrainBuilder()
-            .SetGrain(grainId)
+            .GetGrain(grainId)
             .WithSubscriber(failedClient, "client-1", firstObserver)
             .WithSubscriber(remainingClient, "client-2", secondObserver)
             .Build();
@@ -299,7 +306,10 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         // Assert
         await firstObserver.DidNotReceive().ReceiveMessage(Arg.Is<IMessage>(m => m.Message == secondMessage));
     }
+}
 
+public class ExpirationTests
+{
     // There is nothing explicit on the IChatGrain interface to suggest that subscriptions can expire, so this test is technically testing
     // an implementation detail rather than the interface. However, as stated in the Orleans documentation, observers are considered to be
     // unreliable, so it is reasonable to expect that any implementation will have a mechanism to remove defunct observers. Therefore, I
@@ -315,66 +325,47 @@ public class ChatGrainTests : IClassFixture<TestClusterFixture>
         var clientOne = Guid.NewGuid();
         var screenNameOne = "client-1";
         // use 2/3 so that one interval does not expire an observer, but two intervals does.
-        var interval = GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver_SiloConfiguration.ObserverTimeout * (2 / 3.0);
+        var interval = ExpirationTestsSiloConfiguration.ObserverTimeout * (2 / 3.0);
 
-        var customCluster = TestClusterFixture
-            .StartCustomCluster<GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver_SiloConfiguration>();
-        var grain = await _fixture
-            .GetGrainBuilder(customCluster)
-            .SetGrain(grainId)
+        var cluster = new TestClusterBuilder()
+            .AddSiloBuilderConfigurator<ExpirationTestsSiloConfiguration>()
+            .AddClientBuilderConfigurator<TestClientConfiguration>()
+            .Build();
+        cluster.Deploy();
+
+        var grain = await GrainBuilder
+            .ForCluster(cluster)
+            .GetGrain(grainId)
             .WithSubscriber(clientOne, screenNameOne, firstObserver)
             .WithSubscriber(Guid.NewGuid(), "client-2", secondObserver)
             .Build();
 
         // Act
-        GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver_SiloConfiguration
-            .TimeProvider.Advance(TimeSpan.FromSeconds(interval));
+        ExpirationTestsSiloConfiguration.TimeProvider.Advance(TimeSpan.FromSeconds(interval));
         // Resubscribe the first client to reset its timeout.
-        await grain.Subscribe(clientOne, screenNameOne, _cluster.GrainFactory.CreateObjectReference<IChatObserver>(firstObserver));
+        await grain.Subscribe(clientOne, screenNameOne, cluster.GrainFactory.CreateObjectReference<IChatObserver>(firstObserver));
         // Advance time sufficiently to expire the second subscriber.
-        GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver_SiloConfiguration
-            .TimeProvider.Advance(TimeSpan.FromSeconds(interval));
+        ExpirationTestsSiloConfiguration.TimeProvider.Advance(TimeSpan.FromSeconds(interval));
         await grain.SendMessage(clientOne, message);
 
         // Assert
         await secondObserver.DidNotReceive().ReceiveMessage(Arg.Is<IMessage>(m => m.Message == message));
     }
-}
 
-public class TestClusterFixture : IDisposable
-{
-    public TestClusterFixture() => DefaultCluster.Deploy();
-
-    public TestCluster DefaultCluster { get; } = new TestClusterBuilder()
-        .AddSiloBuilderConfigurator<DefaultTestSiloConfiguration>()
-        .AddClientBuilderConfigurator<TestClientConfiguration>()
-        .Build();
-
-    public void Dispose() => DefaultCluster.StopAllSilos();
-
-    public GrainBuilder GetGrainBuilder() => new(DefaultCluster);
-
-    public GrainBuilder GetGrainBuilder(TestCluster cluster) => new(cluster);
-
-    public static TestCluster StartCustomCluster<T>() where T : ISiloConfigurator, new()
+    private class ExpirationTestsSiloConfiguration : ISiloConfigurator
     {
-        var cluster = new TestClusterBuilder()
-            .AddSiloBuilderConfigurator<T>()
-            .AddClientBuilderConfigurator<TestClientConfiguration>()
-            .Build();
-        cluster.Deploy();
+        private static readonly FakeTimeProvider _timeProvider = new();
 
-        return cluster;
-    }
+        public static FakeTimeProvider TimeProvider => _timeProvider;
 
-    private class DefaultTestSiloConfiguration : ISiloConfigurator
-    {
+        public static int ObserverTimeout => 100;
+
         public void Configure(ISiloBuilder siloBuilder)
         {
             siloBuilder.ConfigureServices(services =>
             {
-                services.AddSingleton<TimeProvider, FakeTimeProvider>();
-                services.Configure<ChatGrainOptions>(x => x.ObserverTimeout = int.MaxValue);
+                services.AddSingleton<TimeProvider>(_timeProvider);
+                services.Configure<ChatGrainOptions>(x => x.ObserverTimeout = ObserverTimeout);
             });
             siloBuilder.Services.AddSerializer(serializerBuilder =>
             {
@@ -383,36 +374,99 @@ public class TestClusterFixture : IDisposable
             });
         }
     }
+}
 
-    private class TestClientConfiguration : IClientBuilderConfigurator
+[Collection(ClusterCollection.Name)]
+public class ScreenNameTests
+{
+    private readonly TestCluster _cluster;
+    private readonly TestClusterFixture _fixture;
+
+    public ScreenNameTests(TestClusterFixture fixture)
     {
-        public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
-        {
-            clientBuilder.Services.AddSerializer(serializerBuilder =>
-            {
-                serializerBuilder.AddJsonSerializer(
-                    isSupported: type => type.Namespace!.StartsWith("Shared"));
-            });
-        }
+        _cluster = fixture.DefaultCluster;
+        _fixture = fixture;
+    }
+
+    [Theory]
+    [InlineData("", false)]
+    [InlineData(" ", false)]
+    [InlineData("client-1", false)]
+    [InlineData("client-2", true)]
+    public async Task GivenAnExistingSubscriber_WhenAScreenNameIsChecked_ThenReturnTheAvailability(string newScreenName, bool expectedAvailability)
+    {
+        // Arrange
+        var grainId = $"{nameof(GivenAnExistingSubscriber_WhenAScreenNameIsChecked_ThenReturnTheAvailability)}_{newScreenName}";
+        var grain = await _fixture
+            .GetGrainBuilder()
+            .GetGrain(grainId)
+            .WithSubscriber(Guid.NewGuid(), "client-1", Substitute.For<IChatObserver>())
+            .Build();
+
+        // Act
+        var actualAvailability = await grain.ScreenNameIsAvailable(newScreenName);
+
+        // Assert
+        Assert.Equal(expectedAvailability, actualAvailability);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("client-1")]
+    public async Task GivenAnExistingSubscriber_WhenANewClientSubscribesWithAnUnavailableScreenName_ThenThrowAnArgumentException(string newScreenName)
+    {
+        // Arrange
+        var grainId = $"{nameof(GivenAnExistingSubscriber_WhenANewClientSubscribesWithAnUnavailableScreenName_ThenThrowAnArgumentException)}_{newScreenName}";
+        var grain = await _fixture
+            .GetGrainBuilder()
+            .GetGrain(grainId)
+            .WithSubscriber(Guid.NewGuid(), "client-1", Substitute.For<IChatObserver>())
+            .Build();
+
+        // Act
+        // Assert
+        var observer = _cluster.GrainFactory.CreateObjectReference<IChatObserver>(Substitute.For<IChatObserver>());
+        await Assert.ThrowsAsync<ArgumentException>(() => grain.Subscribe(Guid.NewGuid(), newScreenName, observer));
     }
 }
 
-public class GivenMultipleSubscribers_WhenASubscriptionExpires_ThenDoNotSendAnyMoreMessagesToTheExpiredObserver_SiloConfiguration : ISiloConfigurator
+public class TestClusterFixture : IDisposable
 {
-    private static readonly FakeTimeProvider _timeProvider = new();
+    public TestClusterFixture() => DefaultCluster.Deploy();
 
-    public static FakeTimeProvider TimeProvider => _timeProvider;
+    public TestCluster DefaultCluster { get; } = new TestClusterBuilder()
+        .AddSiloBuilderConfigurator<TestSiloConfiguration>()
+        .AddClientBuilderConfigurator<TestClientConfiguration>()
+        .Build();
 
-    public static int ObserverTimeout => 100;
+    public void Dispose() => DefaultCluster.StopAllSilos();
 
+    public GrainBuilder GetGrainBuilder() => GrainBuilder.ForCluster(DefaultCluster);
+}
+
+public class TestSiloConfiguration : ISiloConfigurator
+{
     public void Configure(ISiloBuilder siloBuilder)
     {
         siloBuilder.ConfigureServices(services =>
         {
-            services.AddSingleton<TimeProvider>(_timeProvider);
-            services.Configure<ChatGrainOptions>(x => x.ObserverTimeout = ObserverTimeout);
+            services.AddSingleton<TimeProvider, FakeTimeProvider>();
+            services.Configure<ChatGrainOptions>(x => x.ObserverTimeout = int.MaxValue);
         });
         siloBuilder.Services.AddSerializer(serializerBuilder =>
+        {
+            serializerBuilder.AddJsonSerializer(
+                isSupported: type => type.Namespace!.StartsWith("Shared"));
+        });
+    }
+}
+
+public class TestClientConfiguration : IClientBuilderConfigurator
+{
+    public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
+    {
+        clientBuilder.Services.AddSerializer(serializerBuilder =>
         {
             serializerBuilder.AddJsonSerializer(
                 isSupported: type => type.Namespace!.StartsWith("Shared"));
@@ -426,7 +480,7 @@ public class GrainBuilder
     private readonly List<(Guid Id, string ScreenName, IChatObserver Observer)> _subscribers = [];
     private IChatGrain? _grain;
 
-    public GrainBuilder(TestCluster cluster)
+    private GrainBuilder(TestCluster cluster)
     {
         _cluster = cluster;
     }
@@ -451,16 +505,18 @@ public class GrainBuilder
         return _grain;
     }
 
-    public GrainBuilder SetGrain(string grainId)
+    public static GrainBuilder ForCluster(TestCluster cluster) => new(cluster);
+
+    public GrainBuilder GetGrain(string grainId)
     {
         _grain = _cluster.GrainFactory.GetGrain<IChatGrain>(grainId);
 
         return this;
     }
 
-    public GrainBuilder WithSubscriber(Guid observerId, string screenName, IChatObserver observer)
+    public GrainBuilder WithSubscriber(Guid clientId, string screenName, IChatObserver observer)
     {
-        _subscribers.Add((observerId, screenName, observer));
+        _subscribers.Add((clientId, screenName, observer));
 
         return this;
     }

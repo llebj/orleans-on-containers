@@ -8,7 +8,6 @@
  * currently exist within the chat. The user should have no control over the clientId.
  */
 
-// TODO: Change the 'clientId' parameters back to a guid.
 // TODO: Add a RenewSubscription method to allow subscribed clients to renew
 //       their subscriptions rather than relying on the Subscribe method for
 //       both functions.
@@ -21,9 +20,10 @@
  */
 public interface IChatGrain : IGrainWithStringKey
 {
+    Task<bool> ScreenNameIsAvailable(string screenName);
+
     Task SendMessage(Guid clientId, string message);
 
-    // TODO: Allow a user to specify a screen name when subscribing.
     Task Subscribe(Guid clientId, string screenName, IChatObserver observer);
 
     Task Unsubscribe(Guid clientId);
