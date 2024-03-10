@@ -77,6 +77,26 @@ public class ChatGrainTests
     }
 
     [Fact]
+    public async Task GivenASubscriber_WhenTheSameClientSubscribesAgain_ThenThrowAnInvalidOperationException()
+    {
+        // Arrange
+        var grainId = nameof(GivenASubscriber_WhenTheSameClientSubscribesAgain_ThenThrowAnInvalidOperationException);
+        var clientId = Guid.NewGuid();
+        var screenName = "client-1";
+        var observer = Substitute.For<IChatObserver>();
+        var grain = await _fixture
+            .GetGrainBuilder()
+            .GetGrain(grainId)
+            .WithSubscriber(clientId, screenName, observer)
+            .Build();
+
+        // Act
+        // Assert
+        var observerReference = _cluster.GrainFactory.CreateObjectReference<IChatObserver>(observer);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => grain.Subscribe(clientId, screenName, observerReference));
+    }
+
+    [Fact]
     public async Task GivenASubscriber_WhenAnotherClientSubscribes_ThenNotifyTheExistingObserver()
     {
         // Arrange
@@ -123,6 +143,22 @@ public class ChatGrainTests
     }
 
     [Fact]
+    public async Task GivenNoSubscribers_WhenAClientResubscribes_ThenThrowAnInvalidOperationException()
+    {
+        // Arrange
+        var grainId = nameof(GivenNoSubscribers_WhenAClientResubscribes_ThenThrowAnInvalidOperationException);
+        var grain = await _fixture
+            .GetGrainBuilder()
+            .GetGrain(grainId)
+            .Build();
+
+        // Act
+        // Assert
+        var observer = _cluster.GrainFactory.CreateObjectReference<IChatObserver>(Substitute.For<IChatObserver>());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => grain.Resubscribe(Guid.NewGuid(), observer));
+    }
+
+    [Fact]
     public async Task GivenMultipleSubscribers_WhenAnExistingSubscriberResubscribes_ThenDoNotNotifyTheOtherObservers()
     {
         // Arrange
@@ -139,7 +175,7 @@ public class ChatGrainTests
             .Build();
 
         // Act
-        await grain.Subscribe(clientOne, screenNameOne, _fixture.DefaultCluster.GrainFactory.CreateObjectReference<IChatObserver>(firstObserver));
+        await grain.Resubscribe(clientOne, _fixture.DefaultCluster.GrainFactory.CreateObjectReference<IChatObserver>(firstObserver));
 
         // Assert
         await secondObserver.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
@@ -167,7 +203,7 @@ public class ChatGrainTests
 
         // Act
         // Register a new observer instance under the existing "clientOne" subscription.
-        await grain.Subscribe(clientOne, screenNameOne, _fixture.DefaultCluster.GrainFactory.CreateObjectReference<IChatObserver>(thirdObserver));
+        await grain.Resubscribe(clientOne, _fixture.DefaultCluster.GrainFactory.CreateObjectReference<IChatObserver>(thirdObserver));
         // Send a message from the second client (as it remains unchanged).
         await grain.SendMessage(clientTwo, message);
 
@@ -232,10 +268,10 @@ public class ChatGrainTests
     }
 
     [Fact]
-    public async Task GivenMultipleSubscribers_WhenAnUnsubscribedClientUnsubscribes_ThenDoNotNotifyAnyObservers()
+    public async Task GivenMultipleSubscribers_WhenAnUnsubscribedClientUnsubscribes_ThenThrowAnInvalidOperationException()
     {
         // Arrange
-        var grainId = nameof(GivenMultipleSubscribers_WhenAnUnsubscribedClientUnsubscribes_ThenDoNotNotifyAnyObservers);
+        var grainId = nameof(GivenMultipleSubscribers_WhenAnUnsubscribedClientUnsubscribes_ThenThrowAnInvalidOperationException);
         var firstObserver = Substitute.For<IChatObserver>();
         var secondObserver = Substitute.For<IChatObserver>();
         var grain = await _fixture
@@ -246,11 +282,8 @@ public class ChatGrainTests
             .Build();
 
         // Act
-        await grain.Unsubscribe(Guid.NewGuid());
-
         // Assert
-        await firstObserver.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
-        await secondObserver.DidNotReceiveWithAnyArgs().ReceiveMessage(Arg.Any<IMessage>());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => grain.Unsubscribe(Guid.NewGuid()));
     }
 
     [Fact]
@@ -343,7 +376,7 @@ public class ExpirationTests
         // Act
         ExpirationTestsSiloConfiguration.TimeProvider.Advance(TimeSpan.FromSeconds(interval));
         // Resubscribe the first client to reset its timeout.
-        await grain.Subscribe(clientOne, screenNameOne, cluster.GrainFactory.CreateObjectReference<IChatObserver>(firstObserver));
+        await grain.Resubscribe(clientOne, cluster.GrainFactory.CreateObjectReference<IChatObserver>(firstObserver));
         // Advance time sufficiently to expire the second subscriber.
         ExpirationTestsSiloConfiguration.TimeProvider.Advance(TimeSpan.FromSeconds(interval));
         await grain.SendMessage(clientOne, message);

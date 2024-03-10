@@ -20,6 +20,19 @@ public class ChatGrain : Grain, IChatGrain
         _timeProvider = timeProvider;
     }
 
+    public Task Resubscribe(Guid clientId, IChatObserver observer)
+    {
+        if (!_subscriberManager.ClientIsSubscribed(clientId))
+        {
+            throw new InvalidOperationException(
+                $"The client '{clientId}' attempted to resubscribe to '{this.GetPrimaryKeyString()}' without an active subscription.");
+        }
+
+        _subscriberManager.UpdateObserver(clientId, GetCurrentTime(), observer);
+
+        return Task.CompletedTask;
+    }
+
     public Task<bool> ScreenNameIsAvailable(string screenName)
     {
         if (string.IsNullOrWhiteSpace(screenName))
@@ -36,7 +49,8 @@ public class ChatGrain : Grain, IChatGrain
 
         if (!_subscriberManager.ClientIsSubscribed(clientId))
         {
-            throw new InvalidOperationException($"The client \"{clientId}\" attempted to send a message to the chat \"{grainId}\" without an active subscription.");
+            throw new InvalidOperationException(
+                $"The client '{clientId}' attempted to send a message to the chat '{grainId}' without an active subscription.");
         }
 
         var chatMessage = new ChatMessage(grainId, _subscriberManager.GetClientScreenName(clientId), message);
@@ -45,13 +59,14 @@ public class ChatGrain : Grain, IChatGrain
 
     public async Task Subscribe(Guid clientId, string screenName, IChatObserver observer)
     {
-        await ThrowIfScreenNameNotAvailable(screenName);
-        var isNewSubscriber = _subscriberManager.AddSubscriber(clientId, screenName, GetCurrentTime(), observer);
-
-        if (!isNewSubscriber)
+        if (_subscriberManager.ClientIsSubscribed(clientId))
         {
-            return;
+            throw new InvalidOperationException(
+                $"The client '{clientId}' attempted to subscribe to '{this.GetPrimaryKeyString()}' when it is already subscribed.");
         }
+
+        await ThrowIfScreenNameNotAvailable(screenName);
+        _subscriberManager.AddSubscriber(clientId, screenName, GetCurrentTime(), observer);
 
         var message = new SubscriptionMessage(this.GetPrimaryKeyString(), screenName);
         await NotifyObservers(message, observerId => observerId != clientId);
@@ -61,7 +76,8 @@ public class ChatGrain : Grain, IChatGrain
     {
         if (!_subscriberManager.ClientIsSubscribed(clientId))
         {
-            return;
+            throw new InvalidOperationException(
+                $"The client '{clientId}' attempted to unsubscribe from '{this.GetPrimaryKeyString()} without an active subscription.'");
         }
 
         var subscriberState = _subscriberManager.RemoveSubscriber(clientId);
@@ -131,7 +147,7 @@ public class ChatGrain : Grain, IChatGrain
 
         if (!screenNameIsAvailable)
         {
-            throw new ArgumentException($"The screen name \"{screenName}\" is not available in the chat \"{this.GetPrimaryKeyString()}\".");
+            throw new ArgumentException($"The screen name '{screenName}' is not available in the chat '{this.GetPrimaryKeyString()}'.");
         }
     }
 }
@@ -142,17 +158,10 @@ internal class SubscriberManager : IEnumerable<KeyValuePair<Guid, SubscriberStat
 
     public int Count => _subscribers.Count;
 
-    public bool AddSubscriber(Guid clientId, string screenName, DateTimeOffset currentTime, IChatObserver observer)
+    public void AddSubscriber(Guid clientId, string screenName, DateTimeOffset currentTime, IChatObserver observer)
     {
         var observerState = new SubscriberState(screenName, currentTime, observer);
-        var isNewSubscriber = _subscribers.TryAdd(clientId, observerState);
-
-        if (!isNewSubscriber)
-        {
-            _subscribers[clientId] = observerState;
-        }
-
-        return isNewSubscriber;
+        _subscribers.Add(clientId, observerState);
     }
 
     public bool ClientIsSubscribed(Guid clientId) => _subscribers.ContainsKey(clientId);
@@ -171,13 +180,21 @@ internal class SubscriberManager : IEnumerable<KeyValuePair<Guid, SubscriberStat
     }
 
     public bool ScreenNameIsAvailable(string screenName) => !_subscribers.Any(subscriber => subscriber.Value.ScreenName == screenName);
+
+    public void UpdateObserver(Guid clientId, DateTimeOffset currentTime, IChatObserver observer) => _subscribers[clientId].UpdateObserver(currentTime, observer);
 }
 
 internal class SubscriberState(string ScreenName, DateTimeOffset LastSeen, IChatObserver Observer)
 {
-    public DateTimeOffset LastSeen { get; set; } = LastSeen;
+    public DateTimeOffset LastSeen { get; private set; } = LastSeen;
 
-    public IChatObserver Observer { get; set; } = Observer;
+    public IChatObserver Observer { get; private set; } = Observer;
 
-    public string ScreenName { get; set; } = ScreenName;
+    public string ScreenName { get; private set; } = ScreenName;
+
+    public void UpdateObserver(DateTimeOffset lastSeen, IChatObserver observer)
+    {
+        LastSeen = lastSeen;
+        Observer = observer;
+    }
 }

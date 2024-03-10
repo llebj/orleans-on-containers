@@ -20,6 +20,8 @@
  */
 public interface IChatGrain : IGrainWithStringKey
 {
+    Task Resubscribe(Guid clientId, IChatObserver observer);
+
     Task<bool> ScreenNameIsAvailable(string screenName);
 
     Task SendMessage(Guid clientId, string message);
