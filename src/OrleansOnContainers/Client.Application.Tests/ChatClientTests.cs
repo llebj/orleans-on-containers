@@ -27,24 +27,4 @@ public class ChatClientTests
         // Assert
         Assert.Equal(availability, result.IsSuccess);
     }
-
-    [Fact]
-    public async Task GivenAClientThatHasJoinedAChat_WhenTheClientJoinsAChatAgain_ThenReturnAFailureResult()
-    {
-        // Arrange
-        var chat = "test";
-        var screenName = "test";
-        var grainFactory = Substitute.For<IGrainFactory>();
-        var grain = Substitute.For<IChatGrain>();
-        grain.ScreenNameIsAvailable(screenName).Returns(true);
-        grainFactory.GetGrain<IChatGrain>(chat).Returns(grain);
-        var client = new ChatClient(grainFactory, new NullLogger<ChatClient>());
-        await client.JoinChat(chat, Guid.NewGuid(), screenName);
-
-        // Act
-        var result = await client.JoinChat(chat, Guid.NewGuid(), screenName);
-
-        // Assert
-        Assert.False(result.IsSuccess);
-    }
 }

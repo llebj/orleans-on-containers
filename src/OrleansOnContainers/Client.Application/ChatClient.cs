@@ -21,11 +21,6 @@ internal class ChatClient : IChatClient
 
     public async Task<Result> JoinChat(string chat, Guid clientId, string screenName)
     {
-        if (_observerManager.IsManagingAnObserver)
-        {
-            return Result.Failure("You are already subscribed to a chat. Leave the current chat in order to join another.");
-        }
-
         var grainReference = _grainFactory.GetGrain<IChatGrain>(chat);
         var screenNameIsAvailable = await grainReference.ScreenNameIsAvailable(screenName);
 
