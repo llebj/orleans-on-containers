@@ -7,6 +7,9 @@ namespace Client.Application.Tests;
 
 public class ChatClientTests
 {
+    private readonly NullLogger<ChatClient> _logger = new();
+    private readonly Guid _clientId = Guid.NewGuid();
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -19,10 +22,10 @@ public class ChatClientTests
         var grain = Substitute.For<IChatGrain>();
         grain.ScreenNameIsAvailable(screenName).Returns(availability);
         grainFactory.GetGrain<IChatGrain>(chat).Returns(grain);
-        var client = new ChatClient(grainFactory, new NullLogger<ChatClient>());
+        var client = new ChatClient(grainFactory, _logger, Substitute.For<IMessageStream>());
 
         // Act
-        var result = await client.JoinChat(chat, Guid.NewGuid(), screenName);
+        var result = await client.JoinChat(chat, _clientId, screenName);
 
         // Assert
         Assert.Equal(availability, result.IsSuccess);

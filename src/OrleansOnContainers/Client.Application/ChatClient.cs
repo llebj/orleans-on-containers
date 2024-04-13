@@ -2,6 +2,7 @@
 using GrainInterfaces;
 using Microsoft.Extensions.Logging;
 using Shared.Messages;
+using System.Threading.Channels;
 
 namespace Client.Application;
 
@@ -9,14 +10,17 @@ internal class ChatClient : IChatClient
 {
     private readonly IGrainFactory _grainFactory;
     private readonly ILogger<ChatClient> _logger;
-    private readonly ObserverManager _observerManager = new();
+    private readonly IMessageStream _messageStream;
+    private ChatObserver? _observer;
 
     public ChatClient(
         IGrainFactory grainFactory,
-        ILogger<ChatClient> logger)
+        ILogger<ChatClient> logger,
+        IMessageStream messageStream)
     {
         _grainFactory = grainFactory;
         _logger = logger;
+        _messageStream = messageStream;
     }
 
     public async Task<Result> JoinChat(string chat, Guid clientId, string screenName)
@@ -29,41 +33,34 @@ internal class ChatClient : IChatClient
             return Result.Failure($"The screen name '{screenName}' is not available. Please select another one.");
         }
 
-        var observerReference = _observerManager.GetObserverReference(_grainFactory);
+        _observer = new ChatObserver(_messageStream.GetWriter());
+        var observerReference = _grainFactory.CreateObjectReference<IChatObserver>(_observer);
         await grainReference.Subscribe(clientId, screenName, observerReference);
 
         return Result.Success();
     }
 
-    public Task<Result> LeaveCurrentChat(Guid clientId)
+    public async Task<Result> LeaveChat(string chat, Guid clientId)
     {
-        throw new NotImplementedException();
+        var grainReference = _grainFactory.GetGrain<IChatGrain>(chat);
+        await grainReference.Unsubscribe(clientId);
+        _observer = null;
+
+        return Result.Success();
     }
 
-    public Task<Result> SendMessage(Guid clientId, string message)
+    public async Task<Result> SendMessage(string chat, Guid clientId, string message)
     {
-        throw new NotImplementedException();
-    }
-}
+        var grainReference = _grainFactory.GetGrain<IChatGrain>(chat);
+        await grainReference.SendMessage(clientId, message);
 
-internal class ObserverManager
-{
-    private IChatObserver? _observer;
-
-    public bool IsManagingAnObserver => _observer is not null;
-
-    public IChatObserver GetObserverReference(IGrainFactory grainFactory)
-    {
-        _observer = new ChatObserver();
-
-        return grainFactory.CreateObjectReference<IChatObserver>(_observer);
+        return Result.Success();
     }
 }
 
-internal class ChatObserver : IChatObserver
+internal class ChatObserver(ChannelWriter<IMessage> writer) : IChatObserver
 {
-    public Task ReceiveMessage(IMessage message)
-    {
-        throw new NotImplementedException();
-    }
+    private readonly ChannelWriter<IMessage> _writer = writer;
+
+    public async Task ReceiveMessage(IMessage message) => await _writer.WriteAsync(message);
 }

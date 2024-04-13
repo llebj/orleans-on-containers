@@ -4,7 +4,7 @@ public interface IChatClient
 {
     Task<Result> JoinChat(string chat, Guid clientId, string screenName);
 
-    Task<Result> LeaveCurrentChat(Guid clientId);
+    Task<Result> LeaveChat(string chat, Guid clientId);
 
-    Task<Result> SendMessage(Guid clientId, string message);
+    Task<Result> SendMessage(string chat, Guid clientId, string message);
 }
