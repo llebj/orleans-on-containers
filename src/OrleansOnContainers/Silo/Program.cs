@@ -21,6 +21,7 @@ var builder = Host.CreateDefaultBuilder(args)
     .ConfigureServices(serviceCollection =>
     {
         serviceCollection.Configure<ChatGrainOptions>(configuration.GetSection(ChatGrainOptions.Key));
+        serviceCollection.AddSingleton(TimeProvider.System);
     })
     .ConfigureLogging(logging =>
     {

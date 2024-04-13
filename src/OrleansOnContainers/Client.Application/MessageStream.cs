@@ -1,13 +1,14 @@
-﻿using Shared.Messages;
+﻿using Client.Application.Contracts;
+using Shared.Messages;
 using System.Threading.Channels;
 
 namespace Client.Application;
 
-internal class MessageStream : IMessageStream
+public class MessageStream : IMessageStream
 {
     private readonly Channel<IMessage> _channel = Channel.CreateUnbounded<IMessage>();
 
     public ChannelWriter<IMessage> GetWriter() => _channel.Writer;
 
-    public IAsyncEnumerable<IMessage> ReadMessages(CancellationToken cancellationToken) => _channel.Reader.ReadAllAsync(cancellationToken);
+    public IAsyncEnumerable<IMessage> ReadMessages() => _channel.Reader.ReadAllAsync();
 }

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -20,10 +20,10 @@
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="Serilog.Settings.Configuration" />
     <PackageReference Include="Serilog.Sinks.File" />
-    <PackageReference Include="System.Reactive" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Client.Application\Client.Application.csproj" />
     <ProjectReference Include="..\GrainInterfaces\GrainInterfaces.csproj" />
     <ProjectReference Include="..\Grains\Grains.csproj" />
     <ProjectReference Include="..\Shared\Shared.csproj" />

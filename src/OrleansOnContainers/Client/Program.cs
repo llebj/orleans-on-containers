@@ -1,8 +1,8 @@
-﻿using Client;
+﻿using Client.Application;
+using Client.Application.Contracts;
 using Client.Extensions;
 using Client.Options;
 using Client.Services;
-using GrainInterfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,12 +37,8 @@ var builder = Host.CreateDefaultBuilder(args)
     .ConfigureServices(serviceCollection =>
     {
         serviceCollection.Configure<ObserverManagerOptions>(configuration.GetSection(ObserverManagerOptions.Key));
-        serviceCollection.AddScoped<IChatObserver, ChatObserver>();
-        serviceCollection.AddScoped<IChatService, ChatService>();
-        serviceCollection.AddScoped<ISubscriptionManager, GrainObserverManager>();
-        serviceCollection.AddScoped<IMessageStream, MessageStream>();
-        serviceCollection.AddScoped<IResubscriber<GrainSubscription>, ResubscriptionTimer<GrainSubscription>>();
-        serviceCollection.AddSingleton(TimeProvider.System);
+        serviceCollection.AddSingleton<IChatClient, ChatClient>();
+        serviceCollection.AddSingleton<IMessageStream, MessageStream>();
         serviceCollection.AddHostedService<ChatHostedService>();
     })
     .ConfigureLogging(logging =>

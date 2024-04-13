@@ -1,4 +1,5 @@
-﻿using GrainInterfaces;
+﻿using Client.Application.Contracts;
+using GrainInterfaces;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;

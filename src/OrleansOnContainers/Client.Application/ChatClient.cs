@@ -6,7 +6,7 @@ using System.Threading.Channels;
 
 namespace Client.Application;
 
-internal class ChatClient : IChatClient
+public class ChatClient : IChatClient
 {
     private readonly IGrainFactory _grainFactory;
     private readonly ILogger<ChatClient> _logger;

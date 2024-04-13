@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Client.Application.Contracts;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Shared.Messages;
 using System.Text;
@@ -11,18 +12,18 @@ internal class ChatHostedService : BackgroundService
     private readonly string _chatId = "test";
     private readonly InputHandler _inputHandler = new();
 
-    private readonly IChatService _chatService;
+    private readonly IChatClient _chatClient;
     private readonly IHostApplicationLifetime _lifetime;
     private readonly ILogger<ChatHostedService> _logger;
     private readonly IMessageStream _messageStream;
 
     public ChatHostedService(
-        IChatService chatService,
+        IChatClient chatClient,
         IHostApplicationLifetime lifetime,
         ILogger<ChatHostedService> logger,
         IMessageStream messageStream)
     {
-        _chatService = chatService;
+        _chatClient = chatClient;
         _lifetime = lifetime;
         _logger = logger;
         _messageStream = messageStream;
@@ -31,7 +32,7 @@ internal class ChatHostedService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Executing hosted service.");
-        var joinResult = await _chatService.Join(_chatId, default);
+        var joinResult = await _chatClient.JoinChat(_chatId, _clientId, _clientId.ToString());
 
         if (!joinResult.IsSuccess)
         {
@@ -75,15 +76,23 @@ internal class ChatHostedService : BackgroundService
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        _ =_messageStream.Messages.Subscribe(_inputHandler.Write);
+        _ = ReadMessages(cancellationToken);
 
         await base.StartAsync(cancellationToken);
+    }
+
+    private async Task ReadMessages(CancellationToken cancellationToken)
+    {
+        await foreach (var message in _messageStream.ReadMessages().WithCancellation(cancellationToken))
+        {
+            _inputHandler.Write(message);
+        }
     }
 
     private async Task SendMessage()
     {
         var message = _inputHandler.Read();
-        var sendResult = await _chatService.SendMessage(_clientId, message.Trim());
+        var sendResult = await _chatClient.SendMessage(_chatId, _clientId, message.Trim());
 
         if (!sendResult.IsSuccess)
         {
@@ -167,7 +176,7 @@ internal class InputHandler
         }
     }
 
-    public void Write(OldChatMessage message)
+    public void Write(IMessage message)
     {
         lock (_inputLock)
         {
