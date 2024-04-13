@@ -1,5 +1,6 @@
 ﻿using GrainInterfaces;
 using Grains.Options;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Shared.Messages;
 using System.Collections;
@@ -8,15 +9,19 @@ namespace Grains;
 
 public class ChatGrain : Grain, IChatGrain
 {
-    private readonly SubscriberManager _subscriberManager = new();
+    private readonly SubscriberManager _subscriberManager;
+    private readonly ILogger<ChatGrain> _logger;
     private readonly TimeSpan _observerTimeout;
     private readonly TimeProvider _timeProvider;
 
     public ChatGrain(
+        ILogger<ChatGrain> logger,
         IOptions<ChatGrainOptions> options,
         TimeProvider timeProvider)
     {
+        _logger = logger;
         _observerTimeout = TimeSpan.FromSeconds(options.Value.ObserverTimeout);
+        _subscriberManager = new(logger);
         _timeProvider = timeProvider;
     }
 
@@ -24,11 +29,13 @@ public class ChatGrain : Grain, IChatGrain
     {
         if (!_subscriberManager.ClientIsSubscribed(clientId))
         {
+            _logger.LogInformation("Client '{ClientId}' attempted to resubscribe without being subscribed.", clientId);
             throw new InvalidOperationException(
-                $"The client '{clientId}' attempted to resubscribe to '{this.GetPrimaryKeyString()}' without an active subscription.");
+                $"Client '{clientId}' attempted to resubscribe to '{this.GetPrimaryKeyString()}' without an active subscription.");
         }
 
         _subscriberManager.UpdateObserver(clientId, GetCurrentTime(), observer);
+        _logger.LogInformation("Client '{ClientId}' resubscribed.", clientId);
 
         return Task.CompletedTask;
     }
@@ -49,10 +56,12 @@ public class ChatGrain : Grain, IChatGrain
 
         if (!_subscriberManager.ClientIsSubscribed(clientId))
         {
+            _logger.LogInformation("Client '{ClientId}' attempted to send a message without being subscribed.", clientId);
             throw new InvalidOperationException(
-                $"The client '{clientId}' attempted to send a message to the chat '{grainId}' without an active subscription.");
+                $"Client '{clientId}' attempted to send a message to the chat '{grainId}' without an active subscription.");
         }
 
+        _logger.LogInformation("Client '{ClientId}' sent a message.", clientId);
         var chatMessage = new ChatMessage(grainId, _subscriberManager.GetClientScreenName(clientId), message);
         await NotifyObservers(chatMessage);
     }
@@ -61,13 +70,15 @@ public class ChatGrain : Grain, IChatGrain
     {
         if (_subscriberManager.ClientIsSubscribed(clientId))
         {
+            _logger.LogInformation("Client '{ClientId}' attempted to subscribe when they are already subscribed.", clientId);
             throw new InvalidOperationException(
-                $"The client '{clientId}' attempted to subscribe to '{this.GetPrimaryKeyString()}' when it is already subscribed.");
+                $"Client '{clientId}' attempted to subscribe to '{this.GetPrimaryKeyString()}' when it is already subscribed.");
         }
 
         await ThrowIfScreenNameNotAvailable(screenName);
-        _subscriberManager.AddSubscriber(clientId, screenName, GetCurrentTime(), observer);
 
+        _logger.LogInformation("Client '{ClientId}' subscribed as '{ScreenName}'.", clientId, screenName);
+        _subscriberManager.AddSubscriber(clientId, screenName, GetCurrentTime(), observer);
         var message = new SubscriptionMessage(this.GetPrimaryKeyString(), screenName);
         await NotifyObservers(message, observerId => observerId != clientId);
     }
@@ -76,10 +87,12 @@ public class ChatGrain : Grain, IChatGrain
     {
         if (!_subscriberManager.ClientIsSubscribed(clientId))
         {
+            _logger.LogInformation("Client '{ClientId}' attempted to unsubscribe without being subscribed.", clientId);
             throw new InvalidOperationException(
-                $"The client '{clientId}' attempted to unsubscribe from '{this.GetPrimaryKeyString()} without an active subscription.'");
+                $"Client '{clientId}' attempted to unsubscribe from '{this.GetPrimaryKeyString()} without an active subscription.'");
         }
 
+        _logger.LogInformation("Client '{ClientId}' unsubscribed.", clientId);
         var subscriberState = _subscriberManager.RemoveSubscriber(clientId);
         var message = new UnsubscriptionMessage(this.GetPrimaryKeyString(), subscriberState.ScreenName);
         await NotifyObservers(message);
@@ -89,6 +102,7 @@ public class ChatGrain : Grain, IChatGrain
 
     private async Task NotifyObservers(IMessage message, Func<Guid, bool>? predicate = null)
     {
+        _logger.LogDebug("Notifying observers of message.");
         var currentTime = GetCurrentTime();
         var tasks = new List<Task>();
         var taskClients = new Dictionary<int, Guid>();
@@ -98,6 +112,7 @@ public class ChatGrain : Grain, IChatGrain
         {
             if ((currentTime - Subscriber.LastSeen) > _observerTimeout)
             {
+                _logger.LogDebug("Marking client '{ClientId}' as failed due to time out.", Id);
                 failedClients.Add(Id);
 
                 continue;
@@ -105,6 +120,7 @@ public class ChatGrain : Grain, IChatGrain
 
             if (predicate is not null && !predicate(Id))
             {
+                _logger.LogDebug("Excluding client '{ClientId}' from notification.", Id);
                 continue;
             }
 
@@ -152,8 +168,9 @@ public class ChatGrain : Grain, IChatGrain
     }
 }
 
-internal class SubscriberManager : IEnumerable<KeyValuePair<Guid, SubscriberState>>
+internal class SubscriberManager(ILogger logger) : IEnumerable<KeyValuePair<Guid, SubscriberState>>
 {
+    private readonly ILogger _logger = logger;
     private readonly Dictionary<Guid, SubscriberState> _subscribers = [];
 
     public int Count => _subscribers.Count;
@@ -162,6 +179,7 @@ internal class SubscriberManager : IEnumerable<KeyValuePair<Guid, SubscriberStat
     {
         var observerState = new SubscriberState(screenName, currentTime, observer);
         _subscribers.Add(clientId, observerState);
+        _logger.LogDebug("Added client '{ClientId}'. Now managing {SubscriberCount} subscribers.", clientId, Count);
     }
 
     public bool ClientIsSubscribed(Guid clientId) => _subscribers.ContainsKey(clientId);
@@ -175,6 +193,7 @@ internal class SubscriberManager : IEnumerable<KeyValuePair<Guid, SubscriberStat
     public SubscriberState RemoveSubscriber(Guid clientId)
     {
         _subscribers.Remove(clientId, out var state);
+        _logger.LogDebug("Removed client '{ClientId}'. Now managing {SubscriberCount} subscribers.", clientId, Count);
 
         return state!;
     }
