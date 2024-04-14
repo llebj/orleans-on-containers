@@ -1,4 +1,5 @@
-﻿using Client.Application.Contracts;
+﻿using Client.Application;
+using Client.Application.Contracts;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Shared.Messages;
@@ -11,22 +12,23 @@ internal class ChatHostedService : BackgroundService
     private readonly Guid _clientId = Guid.NewGuid();
     private readonly string _chatId = "test";
     private readonly InputHandler _inputHandler = new();
+    private Task? _readMessages;
 
     private readonly IChatClient _chatClient;
     private readonly IHostApplicationLifetime _lifetime;
     private readonly ILogger<ChatHostedService> _logger;
-    private readonly IMessageStream _messageStream;
+    private readonly IMessageStreamReaderAllocator _messageStreamReaderAllocator;
 
     public ChatHostedService(
         IChatClient chatClient,
         IHostApplicationLifetime lifetime,
         ILogger<ChatHostedService> logger,
-        IMessageStream messageStream)
+        IMessageStreamReaderAllocator messageStreamReaderAllocator)
     {
         _chatClient = chatClient;
         _lifetime = lifetime;
         _logger = logger;
-        _messageStream = messageStream;
+        _messageStreamReaderAllocator = messageStreamReaderAllocator;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -76,14 +78,15 @@ internal class ChatHostedService : BackgroundService
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        _ = ReadMessages(cancellationToken);
+        var (Reader, ReleaseKey) = _messageStreamReaderAllocator.GetReader();
+        _readMessages = ReadMessages(Reader, cancellationToken);
 
         await base.StartAsync(cancellationToken);
     }
 
-    private async Task ReadMessages(CancellationToken cancellationToken)
+    private async Task ReadMessages(MessageStreamReader messageStreamReader, CancellationToken cancellationToken)
     {
-        await foreach (var message in _messageStream.ReadMessages().WithCancellation(cancellationToken))
+        await foreach (var message in messageStreamReader.ReadMessages().WithCancellation(cancellationToken))
         {
             _inputHandler.Write(message);
         }

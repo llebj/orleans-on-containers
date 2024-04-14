@@ -1,5 +1,4 @@
-﻿using Client.Application;
-using Client.Application.Contracts;
+﻿using Client.Application.DependencyInjection;
 using Client.Extensions;
 using Client.Options;
 using Client.Services;
@@ -37,8 +36,7 @@ var builder = Host.CreateDefaultBuilder(args)
     .ConfigureServices(serviceCollection =>
     {
         serviceCollection.Configure<ObserverManagerOptions>(configuration.GetSection(ObserverManagerOptions.Key));
-        serviceCollection.AddSingleton<IChatClient, ChatClient>();
-        serviceCollection.AddSingleton<IMessageStream, MessageStream>();
+        serviceCollection.AddChatClient();
         serviceCollection.AddHostedService<ChatHostedService>();
     })
     .ConfigureLogging(logging =>

@@ -2,7 +2,6 @@
 using GrainInterfaces;
 using Microsoft.Extensions.Logging;
 using Shared.Messages;
-using System.Threading.Channels;
 
 namespace Client.Application;
 
@@ -10,17 +9,17 @@ public class ChatClient : IChatClient
 {
     private readonly IGrainFactory _grainFactory;
     private readonly ILogger<ChatClient> _logger;
-    private readonly IMessageStream _messageStream;
+    private readonly IMessageStreamWriterAllocator _messageStreamWriterAllocator;
     private ChatObserver? _observer;
 
     public ChatClient(
         IGrainFactory grainFactory,
         ILogger<ChatClient> logger,
-        IMessageStream messageStream)
+        IMessageStreamWriterAllocator messageStreamWriterAllocator)
     {
         _grainFactory = grainFactory;
         _logger = logger;
-        _messageStream = messageStream;
+        _messageStreamWriterAllocator = messageStreamWriterAllocator;
     }
 
     public async Task<Result> JoinChat(string chat, Guid clientId, string screenName)
@@ -33,7 +32,8 @@ public class ChatClient : IChatClient
             return Result.Failure($"The screen name '{screenName}' is not available. Please select another one.");
         }
 
-        _observer = new ChatObserver(_messageStream.GetWriter());
+        var (Writer, ReleaseKey) = _messageStreamWriterAllocator.GetWriter();
+        _observer = new ChatObserver(Writer);
         var observerReference = _grainFactory.CreateObjectReference<IChatObserver>(_observer);
         await grainReference.Subscribe(clientId, screenName, observerReference);
 
@@ -58,9 +58,9 @@ public class ChatClient : IChatClient
     }
 }
 
-internal class ChatObserver(ChannelWriter<IMessage> writer) : IChatObserver
+internal class ChatObserver(MessageStreamWriter writer) : IChatObserver
 {
-    private readonly ChannelWriter<IMessage> _writer = writer;
+    private readonly MessageStreamWriter _writer = writer;
 
-    public async Task ReceiveMessage(IMessage message) => await _writer.WriteAsync(message);
+    public async Task ReceiveMessage(IMessage message) => await _writer.WriteMessage(message, default);
 }

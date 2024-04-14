@@ -23,7 +23,7 @@ public class ChatClientTests
         var grain = Substitute.For<IChatGrain>();
         grain.ScreenNameIsAvailable(screenName).Returns(availability);
         grainFactory.GetGrain<IChatGrain>(chat).Returns(grain);
-        var client = new ChatClient(grainFactory, _logger, Substitute.For<IMessageStream>());
+        var client = new ChatClient(grainFactory, _logger, Substitute.For<IMessageStreamWriterAllocator>());
 
         // Act
         var result = await client.JoinChat(chat, _clientId, screenName);
