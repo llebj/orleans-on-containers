@@ -5,7 +5,7 @@ using System.Threading.Channels;
 
 namespace Client.Application;
 
-public class MessageStream(ILogger<MessageStream> logger) : IMessageStreamReaderAllocator, IMessageStreamWriterAllocator
+internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamReaderAllocator, IMessageStreamWriterAllocator
 {
     private readonly Channel<IMessage> _channel = Channel.CreateUnbounded<IMessage>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
     private readonly ILogger<MessageStream> _logger = logger;

@@ -1,24 +1,20 @@
 ﻿using Client.Application.Contracts;
 using GrainInterfaces;
-using Microsoft.Extensions.Logging;
 using Shared.Messages;
 
 namespace Client.Application;
 
-public class ChatClient : IChatClient
+internal class ChatAccessClient : IChatAccessClient
 {
     private readonly IGrainFactory _grainFactory;
-    private readonly ILogger<ChatClient> _logger;
     private readonly IMessageStreamWriterAllocator _messageStreamWriterAllocator;
     private ChatObserver? _observer;
 
-    public ChatClient(
+    public ChatAccessClient(
         IGrainFactory grainFactory,
-        ILogger<ChatClient> logger,
         IMessageStreamWriterAllocator messageStreamWriterAllocator)
     {
         _grainFactory = grainFactory;
-        _logger = logger;
         _messageStreamWriterAllocator = messageStreamWriterAllocator;
     }
 
@@ -45,14 +41,6 @@ public class ChatClient : IChatClient
         var grainReference = _grainFactory.GetGrain<IChatGrain>(chat);
         await grainReference.Unsubscribe(clientId);
         _observer = null;
-
-        return Result.Success();
-    }
-
-    public async Task<Result> SendMessage(string chat, Guid clientId, string message)
-    {
-        var grainReference = _grainFactory.GetGrain<IChatGrain>(chat);
-        await grainReference.SendMessage(clientId, message);
 
         return Result.Success();
     }

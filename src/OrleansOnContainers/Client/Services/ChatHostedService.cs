@@ -14,27 +14,30 @@ internal class ChatHostedService : BackgroundService
     private readonly InputHandler _inputHandler = new();
     private Task? _readMessages;
 
-    private readonly IChatClient _chatClient;
+    private readonly IChatAccessClient _chatAccessClient;
     private readonly IHostApplicationLifetime _lifetime;
     private readonly ILogger<ChatHostedService> _logger;
+    private readonly IMessageClient _messageClient;
     private readonly IMessageStreamReaderAllocator _messageStreamReaderAllocator;
 
     public ChatHostedService(
-        IChatClient chatClient,
+        IChatAccessClient chatClient,
         IHostApplicationLifetime lifetime,
         ILogger<ChatHostedService> logger,
+        IMessageClient messageClient,
         IMessageStreamReaderAllocator messageStreamReaderAllocator)
     {
-        _chatClient = chatClient;
+        _chatAccessClient = chatClient;
         _lifetime = lifetime;
         _logger = logger;
+        _messageClient = messageClient;
         _messageStreamReaderAllocator = messageStreamReaderAllocator;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Executing hosted service.");
-        var joinResult = await _chatClient.JoinChat(_chatId, _clientId, _clientId.ToString());
+        var joinResult = await _chatAccessClient.JoinChat(_chatId, _clientId, _clientId.ToString());
 
         if (!joinResult.IsSuccess)
         {
@@ -71,7 +74,8 @@ internal class ChatHostedService : BackgroundService
             _inputHandler.AddCharacter(keyInfo.KeyChar);
         }
 
-        MessageWriter.WriteSystemMessage($"Leaving {_chatId}.");
+        _ = await _chatAccessClient.LeaveChat(_chatId, _clientId);
+        MessageWriter.WriteSystemMessage($"Left {_chatId}.");
         _logger.LogInformation("Finished executing hosted service.");
         _lifetime.StopApplication();
     }
@@ -95,7 +99,7 @@ internal class ChatHostedService : BackgroundService
     private async Task SendMessage()
     {
         var message = _inputHandler.Read();
-        var sendResult = await _chatClient.SendMessage(_chatId, _clientId, message.Trim());
+        var sendResult = await _messageClient.SendMessage(_chatId, _clientId, message.Trim());
 
         if (!sendResult.IsSuccess)
         {

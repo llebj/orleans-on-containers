@@ -5,9 +5,10 @@ namespace Client.Application.DependencyInjection;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddChatClient(this IServiceCollection services) 
+    public static IServiceCollection AddChatServices(this IServiceCollection services) 
     {
-        services.AddSingleton<IChatClient, ChatClient>();
+        services.AddSingleton<IChatAccessClient, ChatAccessClient>();
+        services.AddSingleton<IMessageClient, MessageClient>();
         services.AddMessageStream();
 
         return services;

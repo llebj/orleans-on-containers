@@ -1,14 +1,12 @@
 ﻿using Client.Application.Contracts;
 using GrainInterfaces;
-using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 
 namespace Client.Application.Tests;
 
-public class ChatClientTests
+public class ChatAccessClientTests
 {
-    private readonly NullLogger<ChatClient> _logger = new();
     private readonly Guid _clientId = Guid.NewGuid();
 
     [Theory]
@@ -23,7 +21,7 @@ public class ChatClientTests
         var grain = Substitute.For<IChatGrain>();
         grain.ScreenNameIsAvailable(screenName).Returns(availability);
         grainFactory.GetGrain<IChatGrain>(chat).Returns(grain);
-        var client = new ChatClient(grainFactory, _logger, Substitute.For<IMessageStreamWriterAllocator>());
+        var client = new ChatAccessClient(grainFactory, Substitute.For<IMessageStreamWriterAllocator>());
 
         // Act
         var result = await client.JoinChat(chat, _clientId, screenName);
