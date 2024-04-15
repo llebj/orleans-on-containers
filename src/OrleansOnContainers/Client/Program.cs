@@ -1,6 +1,6 @@
 ﻿using Client.Application.DependencyInjection;
+using Client.Application.Options;
 using Client.Extensions;
-using Client.Options;
 using Client.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,7 +35,10 @@ var builder = Host.CreateDefaultBuilder(args)
     })
     .ConfigureServices(serviceCollection =>
     {
-        serviceCollection.Configure<ObserverManagerOptions>(configuration.GetSection(ObserverManagerOptions.Key));
+        // These want to be moved to the Application project registration section
+        serviceCollection.Configure<ResubscriberOptions>(configuration.GetSection(ResubscriberOptions.Key));
+        serviceCollection.AddSingleton(TimeProvider.System);
+
         serviceCollection.AddChatServices();
         serviceCollection.AddHostedService<ChatHostedService>();
     })
