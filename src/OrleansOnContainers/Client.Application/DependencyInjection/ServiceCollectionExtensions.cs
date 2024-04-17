@@ -7,6 +7,7 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddChatServices(this IServiceCollection services) 
     {
+        services.AddSingleton<IResubscriberManager, ResubscriberManager>();
         services.AddSingleton<IChatAccessClient, ChatAccessClient>();
         services.AddSingleton<IMessageClient, MessageClient>();
         services.AddMessageStream();

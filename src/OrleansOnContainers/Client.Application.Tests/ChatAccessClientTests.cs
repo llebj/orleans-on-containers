@@ -1,8 +1,5 @@
 ﻿using Client.Application.Contracts;
-using Client.Application.Options;
 using GrainInterfaces;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Xunit;
 
@@ -11,14 +8,6 @@ namespace Client.Application.Tests;
 public class ChatAccessClientTests
 {
     private readonly Guid _clientId = Guid.NewGuid();
-    private readonly IOptions<ResubscriberOptions> _options;
-    private readonly TimeProvider _timeProvider = new FakeTimeProvider();
-
-    public ChatAccessClientTests()
-    {
-        _options = Substitute.For<IOptions<ResubscriberOptions>>();
-        _options.Value.Returns(new ResubscriberOptions { RefreshPeriod = 100 });
-    }
 
     [Theory]
     [InlineData(true)]
@@ -32,7 +21,7 @@ public class ChatAccessClientTests
         var grain = Substitute.For<IChatGrain>();
         grain.ScreenNameIsAvailable(screenName).Returns(availability);
         grainFactory.GetGrain<IChatGrain>(chat).Returns(grain);        
-        var client = new ChatAccessClient(grainFactory, Substitute.For<IMessageStreamWriterAllocator>(), _options, _timeProvider);
+        var client = new ChatAccessClient(grainFactory, Substitute.For<IMessageStreamWriterAllocator>(), new FakeResubscriberManager());
 
         // Act
         var result = await client.JoinChat(chat, _clientId, screenName);
@@ -40,4 +29,13 @@ public class ChatAccessClientTests
         // Assert
         Assert.Equal(availability, result.IsSuccess);
     }
+}
+
+internal class FakeResubscriberManager : IResubscriberManager
+{
+    public bool IsManagingResubscriber => true;
+
+    public Task StartResubscribing(IChatGrain grain, Guid clientId, IChatObserver observerReference) => Task.CompletedTask;
+
+    public Task StopResubscribing() => Task.CompletedTask;
 }

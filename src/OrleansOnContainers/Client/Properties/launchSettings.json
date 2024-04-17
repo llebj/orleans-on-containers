@@ -5,7 +5,8 @@
       "environmentVariables": {
         "Client__ClusteringProvider": "development",
         "SiloEndpoints__0__HostName": "localhost",
-        "SiloEndpoints__0__Port": "30000"
+        "SiloEndpoints__0__Port": "30000",
+        "Resubscriber__RefreshPeriod": "10"
       }
     },
     "Docker": {
