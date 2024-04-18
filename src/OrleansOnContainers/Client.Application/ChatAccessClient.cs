@@ -1,23 +1,21 @@
 ﻿using Client.Application.Contracts;
 using GrainInterfaces;
-using Shared.Messages;
 
 namespace Client.Application;
 
 internal class ChatAccessClient : IChatAccessClient
 {
     private readonly IGrainFactory _grainFactory;
-    private readonly IMessageStreamWriterAllocator _messageStreamWriterAllocator;
+    private readonly IObserverManager _observerManager;
     private readonly IResubscriberManager _resubscriberManager;
-    private ChatObserver? _observer;
 
     public ChatAccessClient(
         IGrainFactory grainFactory,
-        IMessageStreamWriterAllocator messageStreamWriterAllocator,
+        IObserverManager observerManager,
         IResubscriberManager resubscriberManager)
     {
         _grainFactory = grainFactory;
-        _messageStreamWriterAllocator = messageStreamWriterAllocator;
+        _observerManager = observerManager;
         _resubscriberManager = resubscriberManager;
     }
 
@@ -31,13 +29,11 @@ internal class ChatAccessClient : IChatAccessClient
             return Result.Failure($"The screen name '{screenName}' is not available. Please select another one.");
         }
 
-        var (Writer, ReleaseKey) = _messageStreamWriterAllocator.GetWriter();
-        _observer = new ChatObserver(Writer);
-        var observerReference = _grainFactory.CreateObjectReference<IChatObserver>(_observer);
+        var observer = _observerManager.CreateObserver();
+        var observerReference = _grainFactory.CreateObjectReference<IChatObserver>(observer);
         await grainReference.Subscribe(clientId, screenName, observerReference);
-
         await _resubscriberManager.StartResubscribing(grainReference, clientId, observerReference);
-        
+
         return Result.Success();
     }
      
@@ -45,17 +41,9 @@ internal class ChatAccessClient : IChatAccessClient
     {
         var grainReference = _grainFactory.GetGrain<IChatGrain>(chat);
         await grainReference.Unsubscribe(clientId);
-        _observer = null;
-
+        _observerManager.DestroyObserver();
         await _resubscriberManager.StopResubscribing();
 
         return Result.Success();
     }
-}
-
-internal class ChatObserver(MessageStreamWriter writer) : IChatObserver
-{
-    private readonly MessageStreamWriter _writer = writer;
-
-    public async Task ReceiveMessage(IMessage message) => await _writer.WriteMessage(message, default);
 }

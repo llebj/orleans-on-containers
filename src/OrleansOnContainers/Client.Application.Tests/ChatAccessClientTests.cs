@@ -1,5 +1,4 @@
-﻿using Client.Application.Contracts;
-using GrainInterfaces;
+﻿using GrainInterfaces;
 using NSubstitute;
 using Xunit;
 
@@ -21,13 +20,28 @@ public class ChatAccessClientTests
         var grain = Substitute.For<IChatGrain>();
         grain.ScreenNameIsAvailable(screenName).Returns(availability);
         grainFactory.GetGrain<IChatGrain>(chat).Returns(grain);        
-        var client = new ChatAccessClient(grainFactory, Substitute.For<IMessageStreamWriterAllocator>(), new FakeResubscriberManager());
+        var client = new ChatAccessClient(
+            grainFactory,
+            new FakeObserverManager(),
+            new FakeResubscriberManager());
 
         // Act
         var result = await client.JoinChat(chat, _clientId, screenName);
 
         // Assert
         Assert.Equal(availability, result.IsSuccess);
+    }
+}
+
+internal class FakeObserverManager : IObserverManager
+{
+    public bool IsManagingObserver => true;
+
+    public IChatObserver CreateObserver() => Substitute.For<IChatObserver>();
+
+    public void DestroyObserver()
+    {
+        return;
     }
 }
 

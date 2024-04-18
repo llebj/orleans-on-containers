@@ -7,6 +7,15 @@ namespace Client.Application;
 
 internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamReaderAllocator, IMessageStreamWriterAllocator
 {
+    // The message stream must expose a method for marking a channel as being complete. Currently there
+    // is the possibility that a writer used to write messages from a one grain is de-allocated and then
+    // a new writer is allocated to write messages for a second grain while the original reader is still
+    // running. This could lead to the reader of the channel receiving messages from multiple grains
+    // when they would only expect to see messages from a single grain.
+
+    // TODO: Implement a MessageStream completion mechanism. This should be initiated by the writer and should
+    // allow the reader of the stream to finish reading all messages. There should also be a mechanism to
+    // reset the message stream and allow the allocation of subsequent writers.
     private readonly Channel<IMessage> _channel = Channel.CreateUnbounded<IMessage>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
     private readonly ILogger<MessageStream> _logger = logger;
     private Allocation _currentReaderAllocation = Allocation.None;
