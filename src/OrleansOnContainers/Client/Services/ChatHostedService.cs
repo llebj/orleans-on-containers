@@ -18,20 +18,20 @@ internal class ChatHostedService : BackgroundService
     private readonly IHostApplicationLifetime _lifetime;
     private readonly ILogger<ChatHostedService> _logger;
     private readonly IMessageClient _messageClient;
-    private readonly IMessageStreamReaderAllocator _messageStreamReaderAllocator;
+    private readonly IMessageStreamOutput _messageStreamOutput;
 
     public ChatHostedService(
         IChatAccessClient chatClient,
         IHostApplicationLifetime lifetime,
         ILogger<ChatHostedService> logger,
         IMessageClient messageClient,
-        IMessageStreamReaderAllocator messageStreamReaderAllocator)
+        IMessageStreamOutput messageStreamOutput)
     {
         _chatAccessClient = chatClient;
         _lifetime = lifetime;
         _logger = logger;
         _messageClient = messageClient;
-        _messageStreamReaderAllocator = messageStreamReaderAllocator;
+        _messageStreamOutput = messageStreamOutput;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -82,7 +82,7 @@ internal class ChatHostedService : BackgroundService
 
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
-        var (Reader, ReleaseKey) = _messageStreamReaderAllocator.GetReader();
+        var (Reader, ReleaseKey) = _messageStreamOutput.GetReader();
         _readMessages = ReadMessages(Reader, cancellationToken);
 
         await base.StartAsync(cancellationToken);

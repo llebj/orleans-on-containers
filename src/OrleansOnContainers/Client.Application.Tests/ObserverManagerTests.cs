@@ -91,5 +91,5 @@ public class ObserverManagerTests
         Assert.False(observerManager.IsManagingObserver);
     }
 
-    private IMessageStreamWriterAllocator BuildMessageStream() => new MessageStream(_messageStreamLogger);
+    private IMessageStreamInput BuildMessageStream() => new MessageStream(_messageStreamLogger);
 }

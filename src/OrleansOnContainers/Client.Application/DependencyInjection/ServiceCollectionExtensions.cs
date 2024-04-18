@@ -19,8 +19,8 @@ public static class ServiceCollectionExtensions
     internal static IServiceCollection AddMessageStream(this IServiceCollection services)
     {
         services.AddSingleton<MessageStream>();
-        services.AddSingleton<IMessageStreamReaderAllocator, MessageStream>(f => f.GetRequiredService<MessageStream>());
-        services.AddSingleton<IMessageStreamWriterAllocator, MessageStream>(f => f.GetRequiredService<MessageStream>());
+        services.AddSingleton<IMessageStreamOutput, MessageStream>(f => f.GetRequiredService<MessageStream>());
+        services.AddSingleton<IMessageStreamInput, MessageStream>(f => f.GetRequiredService<MessageStream>());
 
         return services;
     }

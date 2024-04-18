@@ -1,6 +1,6 @@
 ﻿namespace Client.Application.Contracts;
 
-public interface IMessageStreamWriterAllocator
+public interface IMessageStreamInput
 {
     bool WriterIsAllocated { get; }
 

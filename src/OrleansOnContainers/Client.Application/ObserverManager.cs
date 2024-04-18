@@ -17,16 +17,16 @@ internal interface IObserverManager
 internal class ObserverManager : IObserverManager
 {
     private readonly ILogger<ObserverManager> _logger;
-    private readonly IMessageStreamWriterAllocator _messageStreamWriterAllocator;
+    private readonly IMessageStreamInput _messageStreamInput;
     private ChatObserver? _observer;
     private Guid _releaseKey;
 
     public ObserverManager(
         ILogger<ObserverManager> logger,
-        IMessageStreamWriterAllocator messageStreamWriterAllocator)
+        IMessageStreamInput messageStreamInput)
     {
         _logger = logger;
-        _messageStreamWriterAllocator = messageStreamWriterAllocator;
+        _messageStreamInput = messageStreamInput;
     }
 
     public bool IsManagingObserver => _observer is not null;
@@ -39,7 +39,7 @@ internal class ObserverManager : IObserverManager
             throw new InvalidOperationException("Unable to create observer. An observer is already being managed.");
         }
 
-        var (Writer, ReleaseKey) = _messageStreamWriterAllocator.GetWriter();
+        var (Writer, ReleaseKey) = _messageStreamInput.GetWriter();
         var observer = new ChatObserver(Writer);
         _observer = observer;
         _releaseKey = ReleaseKey;
@@ -54,7 +54,7 @@ internal class ObserverManager : IObserverManager
             return;
         }
 
-        _messageStreamWriterAllocator.ReleaseWriter(_releaseKey);
+        _messageStreamInput.ReleaseWriter(_releaseKey);
         _releaseKey = default;
         _observer = null;
     }

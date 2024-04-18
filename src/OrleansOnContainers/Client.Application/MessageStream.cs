@@ -5,7 +5,7 @@ using System.Threading.Channels;
 
 namespace Client.Application;
 
-internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamReaderAllocator, IMessageStreamWriterAllocator
+internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutput, IMessageStreamInput
 {
     // The message stream must expose a method for marking a channel as being complete. Currently there
     // is the possibility that a writer used to write messages from a one grain is de-allocated and then

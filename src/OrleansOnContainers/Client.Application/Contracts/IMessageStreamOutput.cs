@@ -1,6 +1,6 @@
 ﻿namespace Client.Application.Contracts;
 
-public interface IMessageStreamReaderAllocator
+public interface IMessageStreamOutput
 {
     bool ReaderIsAllocated { get; }
 
