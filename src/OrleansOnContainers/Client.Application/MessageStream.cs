@@ -7,6 +7,8 @@ namespace Client.Application;
 
 internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutput, IMessageStreamInput
 {
+
+    private readonly object _allocatorLock = new();
     private readonly ILogger<MessageStream> _logger = logger;
     private readonly ChannelAllocationManager _inputChannelAllocator = new();
     private readonly ChannelAllocationManager _outputChannelAllocator = new();
@@ -19,7 +21,12 @@ internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutp
     public (MessageStreamReader Reader, Guid ReleaseKey) GetReader()
     {
         _logger.LogDebug("New channel reader requested.");
-        var allocationSucceeded = _outputChannelAllocator.TryAllocateChannel();
+        var allocationSucceeded = false;
+
+        lock (_allocatorLock)
+        {
+            allocationSucceeded = _outputChannelAllocator.TryAllocateChannel();
+        }
 
         if (!allocationSucceeded)
         {
@@ -27,6 +34,11 @@ internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutp
             throw new InvalidOperationException("The message stream reader has already been allocated.");
         }
 
+        // We do not need to lock when reading the release information. The only time release information
+        // is modified is in a call to TryAllocateChannel (subsequent calls will fail given the allocations
+        // current state) or TryReleaseChannel, and releasing the channel is only possible with the correct release key.
+        // This release key has not yet been returned to the client code, so there is no possibility that
+        // the release information can be changed by a call to TryReleaseChannel.
         var (ReleaseKey, Token) = _outputChannelAllocator.ReleaseInformation;
         var reader = new MessageStreamReader(_channel.Reader, Token);
         _logger.LogInformation("New channel reader allocated with key '{ReleaseKey}'.", ReleaseKey);
@@ -37,7 +49,12 @@ internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutp
     public (MessageStreamWriter Writer, Guid ReleaseKey) GetWriter()
     {
         _logger.LogDebug("New channel writer requested.");
-        var allocationSucceeded = _inputChannelAllocator.TryAllocateChannel();
+        var allocationSucceeded = false;
+
+        lock (_allocatorLock)
+        {
+            allocationSucceeded = _inputChannelAllocator.TryAllocateChannel();
+        }
 
         if (!allocationSucceeded)
         {
@@ -45,6 +62,7 @@ internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutp
             throw new InvalidOperationException("The message stream writer has already been allocated.");
         }
 
+        // See above comment about locking around release information.
         var (ReleaseKey, Token) = _inputChannelAllocator.ReleaseInformation;
         var writer = new MessageStreamWriter(_channel.Writer, Token);
         _logger.LogInformation("New channel writer allocated with key '{ReleaseKey}'.", ReleaseKey);
@@ -55,7 +73,17 @@ internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutp
     public void ReleaseReader(Guid releaseKey)
     {
         _logger.LogDebug("Release of channel reader requested.");
-        var releaseSucceeded = _outputChannelAllocator.TryReleaseChannel(releaseKey);
+        var releaseSucceeded = false;
+
+        lock (_allocatorLock)
+        {
+            releaseSucceeded = _outputChannelAllocator.TryReleaseChannel(releaseKey);
+
+            if (releaseSucceeded && _inputChannelAllocator.Status == ChannelStatus.AwaitingCompletion)
+            {
+                ResetChannel();
+            }
+        }
 
         if (!releaseSucceeded)
         {
@@ -64,17 +92,26 @@ internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutp
         }
 
        _logger.LogInformation("Channel reader released with key '{ReleaseKey}'.", releaseKey);
-
-        if (InputStatus == ChannelStatus.AwaitingCompletion)
-        {
-            ResetChannel();
-        }
     }
 
     public void ReleaseWriter(Guid releaseKey)
     {
         _logger.LogDebug("Release of channel writer requested.");
-        var releaseSucceeded = _inputChannelAllocator.TryReleaseChannel(releaseKey);
+        var releaseSucceeded = false;
+
+        lock (_allocatorLock)
+        {
+            releaseSucceeded = _inputChannelAllocator.TryReleaseChannel(releaseKey);
+
+            if (releaseSucceeded && _outputChannelAllocator.Status == ChannelStatus.Allocated)
+            {
+                _ = _channel.Writer.TryComplete();
+            }
+            else if (releaseSucceeded && _outputChannelAllocator.Status == ChannelStatus.AwaitingCompletion)
+            {
+                ResetChannel();
+            }
+        }
 
         if (!releaseSucceeded)
         {
@@ -83,15 +120,6 @@ internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutp
         }
 
         _logger.LogInformation("Channel writer released with key '{ReleaseKey}'.", releaseKey);
-
-        if (OutputStatus == ChannelStatus.Allocated)
-        {
-            _ = _channel.Writer.TryComplete();
-        }
-        else if (OutputStatus == ChannelStatus.AwaitingCompletion)
-        {
-            ResetChannel();
-        }
     }
 
     private static Channel<IMessage> GetChannel() => Channel.CreateUnbounded<IMessage>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
@@ -110,10 +138,8 @@ internal class ChannelAllocationManager
 
     public ChannelStatus Status { get; private set; }
 
-    public (Guid ReleaseKey, RevocationToken Token) ReleaseInformation => 
-        _allocation != Allocation.None ?
-        (_allocation.ReleaseKey, _allocation.RevocationTokenSource!.GetToken()) :
-        (default, RevocationToken.None);
+    public (Guid ReleaseKey, RevocationToken Token) ReleaseInformation => !_allocation.IsNone ? 
+        (_allocation.ReleaseKey, _allocation.RevocationTokenSource!.GetToken()) : (default, RevocationToken.None);
 
     public bool TryAllocateChannel()
     {
