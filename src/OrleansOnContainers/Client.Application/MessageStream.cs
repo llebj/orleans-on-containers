@@ -7,122 +7,171 @@ namespace Client.Application;
 
 internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutput, IMessageStreamInput
 {
-    // The message stream must expose a method for marking a channel as being complete. Currently there
-    // is the possibility that a writer used to write messages from a one grain is de-allocated and then
-    // a new writer is allocated to write messages for a second grain while the original reader is still
-    // running. This could lead to the reader of the channel receiving messages from multiple grains
-    // when they would only expect to see messages from a single grain.
-
-    // TODO: Implement a MessageStream completion mechanism. This should be initiated by the writer and should
-    // allow the reader of the stream to finish reading all messages. There should also be a mechanism to
-    // reset the message stream and allow the allocation of subsequent writers.
-    private readonly Channel<IMessage> _channel = Channel.CreateUnbounded<IMessage>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
     private readonly ILogger<MessageStream> _logger = logger;
-    private Allocation _currentReaderAllocation = Allocation.None;
-    private Allocation _currentWriterAllocation = Allocation.None;
+    private readonly ChannelAllocationManager _inputChannelAllocator = new();
+    private readonly ChannelAllocationManager _outputChannelAllocator = new();
+    private Channel<IMessage> _channel = GetChannel();
 
-    public bool ReaderIsAllocated => !_currentReaderAllocation.IsNone;
+    public ChannelStatus InputStatus => _inputChannelAllocator.Status;
 
-    public bool WriterIsAllocated => !_currentWriterAllocation.IsNone;
+    public ChannelStatus OutputStatus => _outputChannelAllocator.Status;
 
     public (MessageStreamReader Reader, Guid ReleaseKey) GetReader()
     {
         _logger.LogDebug("New channel reader requested.");
+        var allocationSucceeded = _outputChannelAllocator.TryAllocateChannel();
 
-        if (ReaderIsAllocated)
+        if (!allocationSucceeded)
         {
             _logger.LogWarning("Failed to allocate channel reader. The reader has already been allocated.");
             throw new InvalidOperationException("The message stream reader has already been allocated.");
         }
 
-        var releaseKey = Guid.NewGuid();
-        var revocationTokenSource = new RevocationTokenSource();
-        _currentReaderAllocation = new(releaseKey, revocationTokenSource);
-        _logger.LogInformation("New channel reader allocated with key '{ReleaseKey}'.", releaseKey);
+        var (ReleaseKey, Token) = _outputChannelAllocator.ReleaseInformation;
+        var reader = new MessageStreamReader(_channel.Reader, Token);
+        _logger.LogInformation("New channel reader allocated with key '{ReleaseKey}'.", ReleaseKey);
 
-        var reader = new MessageStreamReader(_channel.Reader, revocationTokenSource.GetToken());
-
-        return (reader, releaseKey);
+        return (reader, ReleaseKey);
     }
 
     public (MessageStreamWriter Writer, Guid ReleaseKey) GetWriter()
     {
         _logger.LogDebug("New channel writer requested.");
+        var allocationSucceeded = _inputChannelAllocator.TryAllocateChannel();
 
-        if (WriterIsAllocated)
+        if (!allocationSucceeded)
         {
             _logger.LogWarning("Failed to allocate channel writer. The writer has already been allocated.");
             throw new InvalidOperationException("The message stream writer has already been allocated.");
         }
 
-        var releaseKey = Guid.NewGuid();
-        var revocationTokenSource = new RevocationTokenSource();
-        _currentWriterAllocation = new(releaseKey, revocationTokenSource);
-        _logger.LogInformation("New channel writer allocated with key '{ReleaseKey}'.", releaseKey);
+        var (ReleaseKey, Token) = _inputChannelAllocator.ReleaseInformation;
+        var writer = new MessageStreamWriter(_channel.Writer, Token);
+        _logger.LogInformation("New channel writer allocated with key '{ReleaseKey}'.", ReleaseKey);
 
-        var writer = new MessageStreamWriter(_channel.Writer, revocationTokenSource.GetToken());
-
-        return (writer, releaseKey);
+        return (writer, ReleaseKey);
     }
 
     public void ReleaseReader(Guid releaseKey)
     {
-        if (_currentReaderAllocation.IsNone)
+        _logger.LogDebug("Release of channel reader requested.");
+        var releaseSucceeded = _outputChannelAllocator.TryReleaseChannel(releaseKey);
+
+        if (!releaseSucceeded)
         {
-            return;
+            _logger.LogWarning("Failed to release channel reader with provided key '{ReleaseKey}''.", releaseKey);
+            throw new InvalidOperationException("The provided release key does not match that of the allocated writer.");
         }
 
-        _logger.LogDebug("Release of channel reader requested.");
-        ReleaseAllocation(_currentReaderAllocation, releaseKey);
-        _logger.LogInformation("Channel writer released with key '{ReleaseKey}'.", releaseKey);
-        _currentReaderAllocation = Allocation.None;
+       _logger.LogInformation("Channel reader released with key '{ReleaseKey}'.", releaseKey);
+
+        if (InputStatus == ChannelStatus.AwaitingCompletion)
+        {
+            ResetChannel();
+        }
     }
 
     public void ReleaseWriter(Guid releaseKey)
     {
-        if (_currentWriterAllocation.IsNone)
-        {
-            return;
-        }
-
         _logger.LogDebug("Release of channel writer requested.");
-        ReleaseAllocation(_currentWriterAllocation, releaseKey);
-        _logger.LogInformation("Channel writer released with key '{ReleaseKey}'.", releaseKey);
-        _currentWriterAllocation = Allocation.None;
-    }
+        var releaseSucceeded = _inputChannelAllocator.TryReleaseChannel(releaseKey);
 
-    private void ReleaseAllocation(Allocation allocation, Guid releaseKey)
-    {
-        if (allocation.ReleaseKey != releaseKey)
+        if (!releaseSucceeded)
         {
-            _logger.LogWarning("Failed to release allocation: the provided key '{ReleaseKey}' does not match '{ReleaseKey}'.", releaseKey, allocation.ReleaseKey);
+            _logger.LogWarning("Failed to release channel writer with provided key '{ReleaseKey}'.", releaseKey);
             throw new InvalidOperationException("The provided release key does not match that of the allocated writer.");
         }
 
-        allocation.RevocationTokenSource!.RequestRevocation();
+        _logger.LogInformation("Channel writer released with key '{ReleaseKey}'.", releaseKey);
+
+        if (OutputStatus == ChannelStatus.Allocated)
+        {
+            _ = _channel.Writer.TryComplete();
+        }
+        else if (OutputStatus == ChannelStatus.AwaitingCompletion)
+        {
+            ResetChannel();
+        }
     }
 
-    private readonly record struct Allocation
+    private static Channel<IMessage> GetChannel() => Channel.CreateUnbounded<IMessage>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
+
+    private void ResetChannel()
     {
-        public Allocation()
-        {
-
-        }
-
-        public Allocation(Guid releaseKey, RevocationTokenSource revocationTokenSource)
-        {
-            ReleaseKey = releaseKey;
-            RevocationTokenSource = revocationTokenSource;
-        }
-
-        public bool IsNone => this == None;
-
-        public static Allocation None { get; } = new();
-
-        public Guid? ReleaseKey { get; }
-
-        public RevocationTokenSource? RevocationTokenSource { get; }
+        _channel = GetChannel();
+        _ = _inputChannelAllocator.TryCompleteChannel();
+        _ = _outputChannelAllocator.TryCompleteChannel();
     }
+}
+
+internal class ChannelAllocationManager
+{
+    private Allocation _allocation = Allocation.None;
+
+    public ChannelStatus Status { get; private set; }
+
+    public (Guid ReleaseKey, RevocationToken Token) ReleaseInformation => 
+        _allocation != Allocation.None ?
+        (_allocation.ReleaseKey, _allocation.RevocationTokenSource!.GetToken()) :
+        (default, RevocationToken.None);
+
+    public bool TryAllocateChannel()
+    {
+        if (Status != ChannelStatus.Open)
+        {
+            return false;
+        }
+
+        _allocation = new(Guid.NewGuid(), new RevocationTokenSource());
+        Status = ChannelStatus.Allocated;
+
+        return true;
+    }
+
+    public bool TryCompleteChannel()
+    {
+        if (Status != ChannelStatus.AwaitingCompletion)
+        {
+            return false;
+        }
+
+        Status = ChannelStatus.Open;
+
+        return true;
+    }
+
+    public bool TryReleaseChannel(Guid releaseKey)
+    {
+        if (Status != ChannelStatus.Allocated || 
+            _allocation.IsNone || 
+            _allocation.ReleaseKey != releaseKey)
+        {
+            return false;
+        }
+
+        _allocation.RevocationTokenSource!.Revoke();
+        _allocation = Allocation.None;
+        Status = ChannelStatus.AwaitingCompletion;
+
+        return true;
+    }
+}
+
+internal readonly record struct Allocation
+{
+    public Allocation(Guid releaseKey, RevocationTokenSource revocationTokenSource)
+    {
+        ReleaseKey = releaseKey;
+        RevocationTokenSource = revocationTokenSource;
+    }
+
+    public bool IsNone => this == None;
+
+    public static Allocation None { get; } = default;
+
+    public Guid ReleaseKey { get; }
+
+    public RevocationTokenSource? RevocationTokenSource { get; }
 }
 
 /// <summary>
@@ -175,12 +224,16 @@ public class RevocationTokenSource()
 
     public RevocationToken GetToken() => new(this);
 
-    public void RequestRevocation() => RevocationRequested = true;
+    public void Revoke() => RevocationRequested = true;
 }
 
-public readonly struct RevocationToken(RevocationTokenSource source)
+public readonly struct RevocationToken(RevocationTokenSource? source)
 {
-    private readonly RevocationTokenSource _source = source;
+    private readonly RevocationTokenSource? _source = source;
 
-    public bool IsRevoked => _source.RevocationRequested;
+    public bool CanBeRevoked => _source is not null;
+
+    public bool IsRevoked => _source is not null && _source.RevocationRequested;
+
+    public static RevocationToken None => default;
 }

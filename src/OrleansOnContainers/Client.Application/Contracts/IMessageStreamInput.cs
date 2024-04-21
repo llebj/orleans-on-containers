@@ -2,7 +2,7 @@
 
 public interface IMessageStreamInput
 {
-    bool WriterIsAllocated { get; }
+    ChannelStatus InputStatus { get; }
 
     (MessageStreamWriter Writer, Guid ReleaseKey) GetWriter();
 

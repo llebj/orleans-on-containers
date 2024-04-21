@@ -91,5 +91,12 @@ public class ObserverManagerTests
         Assert.False(observerManager.IsManagingObserver);
     }
 
-    private IMessageStreamInput BuildMessageStream() => new MessageStream(_messageStreamLogger);
+    private IMessageStreamInput BuildMessageStream()
+    {
+        var messageStream = new MessageStream(_messageStreamLogger);
+        var (_, ReleaseKey) = messageStream.GetReader();
+        messageStream.ReleaseReader(ReleaseKey);
+
+        return messageStream;
+    }
 }

@@ -7,12 +7,12 @@ namespace Client.Application.Tests;
 
 public class MessageStreamTests
 {
-    public class ReaderTests
+    public class OutputTests
     {
         private readonly ILogger<MessageStream> _logger = new NullLogger<MessageStream>();
 
         [Fact]
-        public void GivenNoAllocatedReader_WhenTheReaderIsRetreived_ThenMarkTheReaderAsBeingAllocated()
+        public void GivenAnOpenOutputChannel_WhenTheReaderIsRetreived_ThenMarkTheOutputAsAllocated()
         {
             // Arrange
             var messageStream = new MessageStream(_logger);
@@ -21,24 +21,36 @@ public class MessageStreamTests
             _ = messageStream.GetReader();
 
             // Assert
-            Assert.True(messageStream.ReaderIsAllocated);
+            Assert.Equal(ChannelStatus.Allocated, messageStream.OutputStatus);
         }
 
         [Fact]
-        public void GivenNoAllocatedReader_WhenTheReaderIsRelesed_ThenMarkTheReaderAsNotBeingAllocated()
+        public void GivenAnOpenOutputChannel_WhenTheReaderIsRetreived_ThenReturnNonEmptyValues()
         {
             // Arrange
             var messageStream = new MessageStream(_logger);
 
             // Act
-            messageStream.ReleaseReader(Guid.NewGuid());
+            var (Reader, ReleaseKey) = messageStream.GetReader();
 
             // Assert
-            Assert.False(messageStream.ReaderIsAllocated);
+            Assert.NotNull(Reader);
+            Assert.NotEqual(Guid.Empty, ReleaseKey);
         }
 
         [Fact]
-        public void GivenAnAllocatedReader_WhenTheReaderIsRetreived_ThenThrowAnInvalidOperationException()
+        public void GivenAnOpenOutputChannel_WhenTheReaderIsRelesed_ThenThrowAnInvalidOperationException()
+        {
+            // Arrange
+            var messageStream = new MessageStream(_logger);
+
+            // Act
+            // Assert
+            Assert.Throws<InvalidOperationException>(() => messageStream.ReleaseReader(Guid.NewGuid()));
+        }
+
+        [Fact]
+        public void GivenAnAllocatedOutputChannel_WhenTheReaderIsRetreived_ThenThrowAnInvalidOperationException()
         {
             // Arrange
             var messageStream = new MessageStream(_logger);
@@ -50,7 +62,7 @@ public class MessageStreamTests
         }
 
         [Fact]
-        public void GivenAnAllocatedReader_WhenTheReaderIsReleasedWithTheCorrectKey_ThenMarkTheReaderAsNotBeingAllocated()
+        public void GivenAnAllocatedOutputChannel_WhenTheReaderIsReleasedWithTheCorrectKey_ThenMarkTheOutputAsAwaitingCompletion()
         {
             // Arrange
             var messageStream = new MessageStream(_logger);
@@ -60,11 +72,11 @@ public class MessageStreamTests
             messageStream.ReleaseReader(ReleaseKey);
 
             // Assert
-            Assert.False(messageStream.ReaderIsAllocated);
+            Assert.Equal(ChannelStatus.AwaitingCompletion, messageStream.OutputStatus);
         }
 
         [Fact]
-        public void GivenAnAllocatedReader_WhenTheReaderIsReleasedWithTheIncorrectKey_ThenThrowAnInvalidOperationException()
+        public void GivenAnAllocatedOutputChannel_WhenTheReaderIsReleasedWithTheIncorrectKey_ThenThrowAnInvalidOperationException()
         {
             // Arrange
             var testKey = Guid.NewGuid();
@@ -83,7 +95,7 @@ public class MessageStreamTests
         }
 
         [Fact]
-        public void GivenAnUnallocatedReader_WhenMessagesAreReadFromTheReader_ThenThrowAnInvalidOperationException()
+        public void GivenAnAwaitingCompletionOutputChannel_WhenMessagesAreReadFromTheReader_ThenThrowAnInvalidOperationException()
         {
             // Arrange
             var message = new ChatMessage("test", "test", "test");
@@ -95,14 +107,40 @@ public class MessageStreamTests
             // Assert
             Assert.Throws<InvalidOperationException>(Reader.ReadMessages);
         }
+
+        [Fact]
+        public void GivenAnAwaitingCompletionOutputChannel_WhenAReaderIsRetrieved_ThenThrowAnInvalidOperationException()
+        {
+            // Arrange
+            var messageStream = new MessageStream(_logger);
+            var (_, ReleaseKey) = messageStream.GetReader();
+            messageStream.ReleaseReader(ReleaseKey);
+
+            // Act
+            // Assert
+            Assert.Throws<InvalidOperationException>(() => messageStream.GetReader());
+        }
+
+        [Fact]
+        public void GivenAnAwaitingCompletionOutputChannel_WhenAReaderIsReleased_ThenThrowAnInvalidOperationException()
+        {
+            // Arrange
+            var messageStream = new MessageStream(_logger);
+            var (_, ReleaseKey) = messageStream.GetReader();
+            messageStream.ReleaseReader(ReleaseKey);
+
+            // Act
+            // Assert
+            Assert.Throws<InvalidOperationException>(() => messageStream.ReleaseReader(ReleaseKey));
+        }
     }
 
-    public class WriterTests
+    public class InputTests
     {
         private readonly ILogger<MessageStream> _logger = new NullLogger<MessageStream>();
 
         [Fact]
-        public void GivenNoAllocatedWriter_WhenTheWriterIsRetreived_ThenMarkTheWriterAsBeingAllocated()
+        public void GivenAnOpenInputChannel_WhenTheWriterIsRetreived_ThenMarkTheInputAsBeingAllocated()
         {
             // Arrange
             var messageStream = new MessageStream(_logger);
@@ -111,24 +149,36 @@ public class MessageStreamTests
             _ = messageStream.GetWriter();
 
             // Assert
-            Assert.True(messageStream.WriterIsAllocated);
+            Assert.Equal(ChannelStatus.Allocated, messageStream.InputStatus);
         }
 
         [Fact]
-        public void GivenNoAllocatedWriter_WhenTheWriterIsRelesed_ThenMarkTheWriterAsNotBeingAllocated()
+        public void GivenAnOpenInputChannel_WhenTheWriterIsRetreived_ThenReturnNonEmptyValues()
         {
             // Arrange
             var messageStream = new MessageStream(_logger);
 
             // Act
-            messageStream.ReleaseWriter(Guid.NewGuid());
+            var (Writer, ReleaseKey) = messageStream.GetWriter();
 
             // Assert
-            Assert.False(messageStream.WriterIsAllocated);
+            Assert.NotNull(Writer);
+            Assert.NotEqual(default, ReleaseKey);
         }
 
         [Fact]
-        public void GivenAnAllocatedWriter_WhenTheWriterIsRetreived_ThenThrowAnInvalidOperationException()
+        public void GivenAnOpenInputChannel_WhenTheWriterIsRelesed_ThenThrowAnInvalidOperationException()
+        {
+            // Arrange
+            var messageStream = new MessageStream(_logger);
+
+            // Act
+            // Assert
+            Assert.Throws<InvalidOperationException>(() => messageStream.ReleaseWriter(Guid.NewGuid()));
+        }
+
+        [Fact]
+        public void GivenAnAllocatedInputChannel_WhenTheWriterIsRetreived_ThenThrowAnInvalidOperationException()
         {
             // Arrange
             var messageStream = new MessageStream(_logger);
@@ -140,7 +190,7 @@ public class MessageStreamTests
         }
 
         [Fact]
-        public void GivenAnAllocatedWriter_WhenTheWriterIsReleasedWithTheCorrectKey_ThenMarkTheWriterAsNotBeingAllocated()
+        public void GivenAnAllocatedInputChannel_WhenTheWriterIsReleasedWithTheCorrectKey_ThenMarkTheInputAsAwaitingCompletion()
         {
             // Arrange
             var messageStream = new MessageStream(_logger);
@@ -150,11 +200,11 @@ public class MessageStreamTests
             messageStream.ReleaseWriter(ReleaseKey);
 
             // Assert
-            Assert.False(messageStream.WriterIsAllocated);
+            Assert.Equal(ChannelStatus.AwaitingCompletion, messageStream.InputStatus);
         }
 
         [Fact]
-        public void GivenAnAllocatedWriter_WhenTheWriterIsReleasedWithTheIncorrectKey_ThenThrowAnInvalidOperationException()
+        public void GivenAnAllocatedInputChannel_WhenTheWriterIsReleasedWithTheIncorrectKey_ThenThrowAnInvalidOperationException()
         {
             // Arrange
             var testKey = Guid.NewGuid();
@@ -173,7 +223,7 @@ public class MessageStreamTests
         }
 
         [Fact]
-        public async Task GivenAnUnallocatedWriter_WhenAMessageIsWrittenToTheWriter_ThenThrowAnInvalidOperationException()
+        public async Task GivenAwaitingCompletionInputChannel_WhenAMessageIsWrittenToTheWriter_ThenThrowAnInvalidOperationException()
         {
             // Arrange
             var message = new ChatMessage("test", "test", "test");
@@ -184,6 +234,108 @@ public class MessageStreamTests
             // Act
             // Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => Writer.WriteMessage(message, CancellationToken.None));
+        }
+
+        [Fact]
+        public void GivenAwaitingCompletionInputChannel_WhenAWriterIsRetrieved_ThenThrowAnInvalidOperationException()
+        {
+            // Arrange
+            var messageStream = new MessageStream(_logger);
+            var (_, ReleaseKey) = messageStream.GetWriter();
+            messageStream.ReleaseWriter(ReleaseKey);
+
+            // Act
+            // Assert
+            Assert.Throws<InvalidOperationException>(() => messageStream.GetWriter());
+        }
+
+        [Fact]
+        public void GivenAwaitingCompletionInputChannel_WhenAWriterIsReleased_ThenThrowAnInvalidOperationException()
+        {
+            // Arrange
+            var messageStream = new MessageStream(_logger);
+            var (_, ReleaseKey) = messageStream.GetWriter();
+            messageStream.ReleaseWriter(ReleaseKey);
+
+            // Act
+            // Assert
+            Assert.Throws<InvalidOperationException>(() => messageStream.ReleaseWriter(ReleaseKey));
+        }
+    }
+
+    public class ChannelCompletionTests
+    {
+        private readonly ILogger<MessageStream> _logger = new NullLogger<MessageStream>();
+
+        [Fact]
+        public async Task GivenAnInputChannelAwaitingCompletionAndAnAllocatedOutputChannel_WhenMessagesAreRead_ThenReadsToTheEndOfTheStream()
+        {
+            // Arrange
+            var messageStream = new MessageStream(_logger);
+            var (_, WriterKey) = messageStream.GetWriter();
+            var (Reader, ReaderKey) = messageStream.GetReader();
+            messageStream.ReleaseWriter(WriterKey);
+
+            // Act
+            var enumerator = Reader.ReadMessages().GetAsyncEnumerator();
+
+            // Assert
+            Assert.False(await enumerator.MoveNextAsync());
+        }
+
+        [Fact]
+        public void GivenAnOutputChannelAwaitingCompletionAndAnAllocatedInputChannel_WhenTheInputChannelIsReleased_ThenBothChannelsRevertToOpen()
+        {
+            // Arrange
+            var messageStream = new MessageStream(_logger);
+            var (_, WriterKey) = messageStream.GetWriter();
+            var (_, ReaderKey) = messageStream.GetReader();
+            messageStream.ReleaseWriter(WriterKey);
+
+            // Act
+            messageStream.ReleaseReader(ReaderKey);
+
+            // Assert
+            Assert.Equal(ChannelStatus.Open, messageStream.InputStatus);
+            Assert.Equal(ChannelStatus.Open, messageStream.OutputStatus);
+        }
+
+        [Fact]
+        public void GivenAnInputChannelAwaitingCompletionAndAnAllocatedOutputChannel_WhenTheOutputChannelIsReleased_ThenBothChannelsRevertToOpen()
+        {
+            // Arrange
+            var messageStream = new MessageStream(_logger);
+            var (_, WriterKey) = messageStream.GetWriter();
+            var (_, ReaderKey) = messageStream.GetReader();
+            messageStream.ReleaseReader(ReaderKey);
+
+            // Act
+            messageStream.ReleaseWriter(WriterKey);
+
+            // Assert
+            Assert.Equal(ChannelStatus.Open, messageStream.InputStatus);
+            Assert.Equal(ChannelStatus.Open, messageStream.OutputStatus);
+        }
+
+        [Fact(Skip = "This test never completes. Not sure if it is possible to test this piece of functionality.")]
+        public async Task GivenAnOutputChannelThatIsAwaitingCompletionAndAnInputChannelThatWritesAMessageBeforeBeingReleased_WhenANewReaderIsObtainedAndMessagesAreRead_ThenReadToTheEndOfTheStream()
+        {
+            // Arrange
+            var messageStream = new MessageStream(_logger);
+            var (Writer, WriterKey) = messageStream.GetWriter();
+            var (_, ReaderKey) = messageStream.GetReader();
+            messageStream.ReleaseReader(ReaderKey);
+
+            var message = new ChatMessage("test", "test", "test");
+            await Writer.WriteMessage(message, CancellationToken.None);
+            messageStream.ReleaseWriter(WriterKey);
+
+            // Act
+            var (Reader, _) = messageStream.GetReader();
+            var enumerator = Reader.ReadMessages().GetAsyncEnumerator();
+
+            // Assert
+            Assert.False(await enumerator.MoveNextAsync());
         }
     }
 }

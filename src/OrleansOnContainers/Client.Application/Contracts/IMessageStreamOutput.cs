@@ -2,7 +2,7 @@
 
 public interface IMessageStreamOutput
 {
-    bool ReaderIsAllocated { get; }
+    ChannelStatus OutputStatus { get; }
 
     (MessageStreamReader Reader, Guid ReleaseKey) GetReader();
 
