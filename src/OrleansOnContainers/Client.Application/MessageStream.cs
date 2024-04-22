@@ -7,7 +7,6 @@ namespace Client.Application;
 
 internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutput, IMessageStreamInput
 {
-
     private readonly object _allocatorLock = new();
     private readonly ILogger<MessageStream> _logger = logger;
     private readonly ChannelAllocationManager _inputChannelAllocator = new();
@@ -88,7 +87,7 @@ internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutp
         if (!releaseSucceeded)
         {
             _logger.LogWarning("Failed to release channel reader with provided key '{ReleaseKey}''.", releaseKey);
-            throw new InvalidOperationException("The provided release key does not match that of the allocated writer.");
+            throw new InvalidOperationException("The provided key cannot be used to release the stream reader.");
         }
 
        _logger.LogInformation("Channel reader released with key '{ReleaseKey}'.", releaseKey);
@@ -116,7 +115,7 @@ internal class MessageStream(ILogger<MessageStream> logger) : IMessageStreamOutp
         if (!releaseSucceeded)
         {
             _logger.LogWarning("Failed to release channel writer with provided key '{ReleaseKey}'.", releaseKey);
-            throw new InvalidOperationException("The provided release key does not match that of the allocated writer.");
+            throw new InvalidOperationException("The provided key cannot be used to release the stream writer.");
         }
 
         _logger.LogInformation("Channel writer released with key '{ReleaseKey}'.", releaseKey);
