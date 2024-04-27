@@ -10,9 +10,6 @@ namespace Client.Services;
 internal class ChatHostedService : BackgroundService
 {
     private readonly Guid _clientId = Guid.NewGuid();
-    private readonly string _chatId = "test";
-    private readonly InputHandler _inputHandler = new();
-    private Task? _readMessages;
 
     private readonly IChatAccessClient _chatAccessClient;
     private readonly IHostApplicationLifetime _lifetime;
@@ -37,73 +34,112 @@ internal class ChatHostedService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Executing hosted service.");
-        var joinResult = await _chatAccessClient.JoinChat(_chatId, _clientId, _clientId.ToString());
+        MessageWriter.WriteSystemMessage("Welcome!");
 
-        if (!joinResult.IsSuccess)
+        await RunLobby(_clientId, stoppingToken);
+
+        _logger.LogInformation("Finished executing hosted service.");
+        _lifetime.StopApplication();
+    }
+
+    private static async Task ReadMessages(InputHandler inputHandler, MessageStreamReader messageStreamReader, CancellationToken cancellationToken)
+    {
+        try
         {
-            MessageWriter.WriteSystemMessage(joinResult.Message);
-            _lifetime.StopApplication();
-
-            return;
+            await foreach (var message in messageStreamReader.ReadMessages().WithCancellation(cancellationToken))
+            {
+                inputHandler.Write(message);
+            }
         }
+        catch (OperationCanceledException) { }
+    }
 
-        MessageWriter.WriteSystemMessage($"Joined {_chatId} as {_clientId}.");
+    private async Task RunChat(string chat, Guid clientId, CancellationToken cancellationToken)
+    {
+        var inputHandler = new InputHandler();
+        var (Reader, ReleaseKey) = _messageStreamOutput.GetReader();
+        // Create a new CTS so that the read operation can be cancelled and awaited before returning
+        // to the calling code. This ensures that all messages are read from the message stream.
+        var cancellationTokenSource = new CancellationTokenSource();
+        var readMessages = ReadMessages(inputHandler, Reader, cancellationTokenSource.Token);
 
-        while (!stoppingToken.IsCancellationRequested)
+        while (!cancellationToken.IsCancellationRequested)
         {
             var keyInfo = Console.ReadKey(true);
 
-            if ((keyInfo.Modifiers == ConsoleModifiers.Control && keyInfo.Key == ConsoleKey.Q) || 
+            if ((keyInfo.Modifiers == ConsoleModifiers.Control && keyInfo.Key == ConsoleKey.Q) ||
                 keyInfo.Key == ConsoleKey.Escape)
             {
                 break;
             }
             else if (keyInfo.Key == ConsoleKey.Backspace)
             {
-                _inputHandler.RemoveCharacter();
-                
+                inputHandler.RemoveCharacter();
+
                 continue;
             }
             else if (keyInfo.Key == ConsoleKey.Enter)
             {
-                await SendMessage();                
+                var message = inputHandler.Read();
+                var sendResult = await _messageClient.SendMessage(chat, clientId, message.Trim());
+
+                if (!sendResult.IsSuccess)
+                {
+                    MessageWriter.WriteSystemMessage(sendResult.Message);
+                }
 
                 continue;
             }
 
-            _inputHandler.AddCharacter(keyInfo.KeyChar);
+            inputHandler.AddCharacter(keyInfo.KeyChar);
         }
 
-        _ = await _chatAccessClient.LeaveChat(_chatId, _clientId);
-        MessageWriter.WriteSystemMessage($"Left {_chatId}.");
-        _logger.LogInformation("Finished executing hosted service.");
-        _lifetime.StopApplication();
+        cancellationTokenSource.Cancel();
+        await readMessages;
+        _messageStreamOutput.ReleaseReader(ReleaseKey);
     }
 
-    public override async Task StartAsync(CancellationToken cancellationToken)
+    private async Task RunLobby(Guid clientId, CancellationToken cancellationToken)
     {
-        var (Reader, ReleaseKey) = _messageStreamOutput.GetReader();
-        _readMessages = ReadMessages(Reader, cancellationToken);
-
-        await base.StartAsync(cancellationToken);
-    }
-
-    private async Task ReadMessages(MessageStreamReader messageStreamReader, CancellationToken cancellationToken)
-    {
-        await foreach (var message in messageStreamReader.ReadMessages().WithCancellation(cancellationToken))
+        while (!cancellationToken.IsCancellationRequested)
         {
-            _inputHandler.Write(message);
-        }
-    }
+            var input = Console.ReadLine();
 
-    private async Task SendMessage()
-    {
-        var message = _inputHandler.Read();
-        var sendResult = await _messageClient.SendMessage(_chatId, _clientId, message.Trim());
+            if (input is null)
+            {
+                MessageWriter.WriteSystemMessage("Please enter a valid command.");
 
-        if (!sendResult.IsSuccess)
-        {
-            MessageWriter.WriteSystemMessage(sendResult.Message);
+                continue;
+            }
+
+            var tokens = input.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (tokens.Length != 4 || !tokens[0].Equals("join", StringComparison.OrdinalIgnoreCase) || !tokens[2].Equals("as", StringComparison.OrdinalIgnoreCase)) 
+            {
+                MessageWriter.WriteSystemMessage("You can join a chat using the following command 'join {chat} as {screen name}'.");
+
+                continue;
+            }
+
+            var chat = tokens[1];
+            var screenName = tokens[3];
+            var joinResult = await _chatAccessClient.JoinChat(chat, clientId, screenName);
+
+            if (!joinResult.IsSuccess)
+            {
+                MessageWriter.WriteSystemMessage(joinResult.Message);
+
+                continue;
+            }
+
+            Console.Clear();
+            MessageWriter.WriteSystemMessage($"Joined {chat} as {screenName}.");
+
+            await RunChat(chat, clientId, cancellationToken);
+
+            _ = await _chatAccessClient.LeaveChat(chat, clientId);
+            Console.Clear();
+            MessageWriter.WriteSystemMessage($"Left {chat}.");
         }
     }
 }
