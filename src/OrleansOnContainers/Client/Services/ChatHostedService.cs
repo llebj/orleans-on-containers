@@ -96,6 +96,7 @@ internal class ChatHostedService : BackgroundService
 
         cancellationTokenSource.Cancel();
         await readMessages;
+        cancellationTokenSource.Dispose();
         _messageStreamOutput.ReleaseReader(ReleaseKey);
     }
 
