@@ -12,6 +12,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0.100-1-alpine3.18-amd64 AS setup
 WORKDIR /src
 COPY Directory.Packages.props .
 COPY Client/Client.csproj Client/
+COPY Client.Application/Client.Application.csproj Client.Application/
 COPY GrainInterfaces/GrainInterfaces.csproj GrainInterfaces/
 COPY Grains/Grains.csproj Grains/
 COPY Shared/Shared.csproj Shared/
