@@ -44,12 +44,15 @@ To deploy orleans-on-containers with ADO.NET clustering, the above mentioned env
 Both the `client` and `silo` services depend on the `postgres` service being healthy, so you should allow time for that condition to be met.
 
 # User Guide
-Upon starting, the client generates a GUID which it uses to join a chat called 'test'. This GUID identifies the client when sending messages.
+Upon starting the application you will be greeted by a welcome message. From this lobby area you can join a chat using the command `join {chat} as {screen name}`. `chat` identifies the chat that you would like to join and `screen name` is the identifier that you will appear under when in that chat. If the selected screen name is not available then you will be asked to choose another one.
 
-The client supports a basic feature set:
+Once in a chat session you can interact with a chat in the following ways:
 
-- Messages are composed by typing into the console.
-- The client supports alphanumeric and special characters.
+- Messages are composed by typing into the console (the client supports alphanumeric and special characters).
 - Characters can be removed by using the backspace key.
 - Pressing the Enter key will send a message.
-- Pressing Ctrl + q, or Esc will terminate the application.
+- Pressing Ctrl + q, or Esc will quit the current chat session and return you to the lobby.
+
+Messages from other users will appear in the terminal as they arrive and are displayed above your current input.
+
+To terminate the application, type `quit` when in the lobby.
