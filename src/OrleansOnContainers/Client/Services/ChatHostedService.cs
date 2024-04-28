@@ -115,9 +115,14 @@ internal class ChatHostedService : BackgroundService
 
             var tokens = input.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+            if (tokens.Length == 1 && tokens[0].Equals("quit", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             if (tokens.Length != 4 || !tokens[0].Equals("join", StringComparison.OrdinalIgnoreCase) || !tokens[2].Equals("as", StringComparison.OrdinalIgnoreCase)) 
             {
-                MessageWriter.WriteSystemMessage("You can join a chat using the following command 'join {chat} as {screen name}'.");
+                MessageWriter.WriteSystemMessage("You can join a chat using the following command 'join {chat} as {screen name}', or quit the application using 'quit'.");
 
                 continue;
             }
