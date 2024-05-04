@@ -1,6 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using GrainInterfaces;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Shared.Messages;
 using Xunit;
 
 namespace Client.Application.Tests;
@@ -98,7 +98,7 @@ public class MessageStreamTests
         public void GivenAnAwaitingCompletionOutputChannel_WhenMessagesAreReadFromTheReader_ThenThrowAnInvalidOperationException()
         {
             // Arrange
-            var message = new ChatMessage("test", "test", "test");
+            var message = new FakeMessage();
             var messageStream = new MessageStream(_logger);
             var (Reader, ReleaseKey) = messageStream.GetReader();
             messageStream.ReleaseReader(ReleaseKey);
@@ -226,7 +226,7 @@ public class MessageStreamTests
         public async Task GivenAwaitingCompletionInputChannel_WhenAMessageIsWrittenToTheWriter_ThenThrowAnInvalidOperationException()
         {
             // Arrange
-            var message = new ChatMessage("test", "test", "test");
+            var message = new FakeMessage();
             var messageStream = new MessageStream(_logger);
             var (Writer, ReleaseKey) = messageStream.GetWriter();
             messageStream.ReleaseWriter(ReleaseKey);
@@ -326,7 +326,7 @@ public class MessageStreamTests
             var (_, ReaderKey) = messageStream.GetReader();
             messageStream.ReleaseReader(ReaderKey);
 
-            var message = new ChatMessage("test", "test", "test");
+            var message = new FakeMessage();
             await Writer.WriteMessage(message, CancellationToken.None);
             messageStream.ReleaseWriter(WriterKey);
 
@@ -338,4 +338,17 @@ public class MessageStreamTests
             Assert.False(await enumerator.MoveNextAsync());
         }
     }
+}
+
+internal class FakeMessage : IMessage
+{
+    public MessageCategory Category => MessageCategory.User;
+
+    public string Chat => string.Empty;
+
+    public string Message => string.Empty;
+
+    public string Sender => string.Empty;
+
+    public DateTimeOffset SentAt => DateTimeOffset.UtcNow;
 }

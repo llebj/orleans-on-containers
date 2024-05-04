@@ -1,8 +1,8 @@
 ﻿using GrainInterfaces;
+using Grains.Messages;
 using Grains.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Shared.Messages;
 using System.Collections;
 
 namespace Grains;
@@ -62,7 +62,7 @@ public class ChatGrain : Grain, IChatGrain
         }
 
         _logger.LogInformation("Client '{ClientId}' sent a message.", clientId);
-        var chatMessage = new ChatMessage(grainId, _subscriberManager.GetClientScreenName(clientId), message);
+        var chatMessage = new ChatMessage(grainId, _subscriberManager.GetClientScreenName(clientId), message, GetCurrentTime());
         await NotifyObservers(chatMessage);
     }
 
@@ -79,7 +79,7 @@ public class ChatGrain : Grain, IChatGrain
 
         _logger.LogInformation("Client '{ClientId}' subscribed as '{ScreenName}'.", clientId, screenName);
         _subscriberManager.AddSubscriber(clientId, screenName, GetCurrentTime(), observer);
-        var message = new SubscriptionMessage(this.GetPrimaryKeyString(), screenName);
+        var message = new SubscriptionMessage(this.GetPrimaryKeyString(), screenName, GetCurrentTime());
         await NotifyObservers(message, observerId => observerId != clientId);
     }
 
@@ -94,7 +94,7 @@ public class ChatGrain : Grain, IChatGrain
 
         _logger.LogInformation("Client '{ClientId}' unsubscribed.", clientId);
         var subscriberState = _subscriberManager.RemoveSubscriber(clientId);
-        var message = new UnsubscriptionMessage(this.GetPrimaryKeyString(), subscriberState.ScreenName);
+        var message = new UnsubscriptionMessage(this.GetPrimaryKeyString(), subscriberState.ScreenName, GetCurrentTime());
         await NotifyObservers(message);
     }
 

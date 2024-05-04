@@ -1,8 +1,8 @@
 ﻿using Client.Application;
 using Client.Application.Contracts;
+using GrainInterfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Shared.Messages;
 using System.Text;
 
 namespace Client.Services;

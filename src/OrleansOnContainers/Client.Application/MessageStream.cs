@@ -1,6 +1,6 @@
 ﻿using Client.Application.Contracts;
+using GrainInterfaces;
 using Microsoft.Extensions.Logging;
-using Shared.Messages;
 using System.Threading.Channels;
 
 namespace Client.Application;

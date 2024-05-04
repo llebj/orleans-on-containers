@@ -1,4 +1,4 @@
-﻿namespace Shared.Messages;
+﻿namespace GrainInterfaces;
 
 public interface IMessage
 {
@@ -6,9 +6,11 @@ public interface IMessage
 
     string Chat { get; }
 
-    string ScreenName { get; }
-
     string Message { get; }
+
+    string Sender { get; }
+
+    DateTimeOffset SentAt { get; }
 }
 
 public enum MessageCategory

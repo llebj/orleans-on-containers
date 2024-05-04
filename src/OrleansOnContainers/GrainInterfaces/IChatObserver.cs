@@ -1,6 +1,4 @@
-﻿using Shared.Messages;
-
-namespace GrainInterfaces;
+﻿namespace GrainInterfaces;
 
 public interface IChatObserver : IGrainObserver
 {

@@ -6,7 +6,6 @@ using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
 using Orleans.Serialization;
 using Orleans.TestingHost;
-using Shared.Messages;
 using Xunit;
 
 namespace Grains.Tests;
@@ -66,13 +65,13 @@ public class ChatGrainTests
             Arg.Is<IMessage>(m => 
                 m.Category == MessageCategory.User && 
                 m.Chat == grainId && 
-                m.ScreenName == expectedScreenName && 
+                m.Sender == expectedScreenName && 
                 m.Message == message));
         await secondObserver.Received().ReceiveMessage(
             Arg.Is<IMessage>(m =>
                 m.Category == MessageCategory.User &&
                 m.Chat == grainId &&
-                m.ScreenName == expectedScreenName &&
+                m.Sender == expectedScreenName &&
                 m.Message == message));
     }
 
@@ -119,7 +118,7 @@ public class ChatGrainTests
             Arg.Is<IMessage>(m =>
                 m.Category == MessageCategory.System &&
                 m.Chat == grainId &&
-                m.ScreenName == expectedScreenName));
+                m.Sender == expectedScreenName));
     }
 
     [Fact]
@@ -213,7 +212,7 @@ public class ChatGrainTests
             Arg.Is<IMessage>(m =>
                 m.Category == MessageCategory.User &&
                 m.Chat == grainId &&
-                m.ScreenName == screenNameTwo &&
+                m.Sender == screenNameTwo &&
                 m.Message == message));
     }
 
@@ -241,7 +240,7 @@ public class ChatGrainTests
             Arg.Is<IMessage>(m =>
                 m.Category == MessageCategory.System &&
                 m.Chat == grainId &&
-                m.ScreenName == screenNameOne));
+                m.Sender == screenNameOne));
     }
 
     [Fact]
@@ -362,7 +361,6 @@ public class ExpirationTests
 
         var cluster = new TestClusterBuilder()
             .AddSiloBuilderConfigurator<ExpirationTestsSiloConfiguration>()
-            .AddClientBuilderConfigurator<TestClientConfiguration>()
             .Build();
         cluster.Deploy();
 
@@ -399,11 +397,6 @@ public class ExpirationTests
             {
                 services.AddSingleton<TimeProvider>(_timeProvider);
                 services.Configure<ChatGrainOptions>(x => x.ObserverTimeout = ObserverTimeout);
-            });
-            siloBuilder.Services.AddSerializer(serializerBuilder =>
-            {
-                serializerBuilder.AddJsonSerializer(
-                    isSupported: type => type.Namespace!.StartsWith("Shared"));
             });
         }
     }
@@ -470,7 +463,6 @@ public class TestClusterFixture : IDisposable
 
     public TestCluster DefaultCluster { get; } = new TestClusterBuilder()
         .AddSiloBuilderConfigurator<TestSiloConfiguration>()
-        .AddClientBuilderConfigurator<TestClientConfiguration>()
         .Build();
 
     public void Dispose() => DefaultCluster.StopAllSilos();
@@ -486,23 +478,6 @@ public class TestSiloConfiguration : ISiloConfigurator
         {
             services.AddSingleton<TimeProvider, FakeTimeProvider>();
             services.Configure<ChatGrainOptions>(x => x.ObserverTimeout = int.MaxValue);
-        });
-        siloBuilder.Services.AddSerializer(serializerBuilder =>
-        {
-            serializerBuilder.AddJsonSerializer(
-                isSupported: type => type.Namespace!.StartsWith("Shared"));
-        });
-    }
-}
-
-public class TestClientConfiguration : IClientBuilderConfigurator
-{
-    public void Configure(IConfiguration configuration, IClientBuilder clientBuilder)
-    {
-        clientBuilder.Services.AddSerializer(serializerBuilder =>
-        {
-            serializerBuilder.AddJsonSerializer(
-                isSupported: type => type.Namespace!.StartsWith("Shared"));
         });
     }
 }
